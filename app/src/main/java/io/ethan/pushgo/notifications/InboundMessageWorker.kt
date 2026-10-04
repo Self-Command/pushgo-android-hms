@@ -1,6 +1,8 @@
 package io.ethan.pushgo.notifications
 
 import android.content.Context
+import android.os.Build
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -56,6 +58,11 @@ class InboundMessageWorker(
             )
             val request = OneTimeWorkRequestBuilder<InboundMessageWorker>()
                 .setInputData(input)
+                .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    }
+                }
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL,
                     10,

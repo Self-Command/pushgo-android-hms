@@ -9,6 +9,10 @@
 
 # Local config
 /local.properties
+**/secrets/
+**/*secret*.txt
+**/*token*.txt
+/app/agconnect-services.json
 /app/src/main/jniLibs/
 
 # APK / AAB / outputs

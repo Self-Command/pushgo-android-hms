@@ -275,35 +275,11 @@ fun SettingsScreen(
                         rowTestTag = "row.settings.notification_transport",
                         icon = Icons.Outlined.NotificationsActive,
                         title = stringResource(R.string.label_notification_transport),
-                        subtitle = if (!fcmSupported && uiState.gatewayPrivateChannelEnabled == false) {
+                        subtitle = if (!fcmSupported) {
                             stringResource(R.string.label_notification_transport_unavailable_hint)
-                        } else if (fcmSupported && uiState.gatewayPrivateChannelEnabled == false) {
-                            stringResource(R.string.label_notification_transport_gateway_private_disabled_hint)
-                        } else if (fcmSupported) {
-                            stringResource(R.string.label_notification_transport_hint)
                         } else {
-                            stringResource(R.string.label_notification_transport_private_only_hint)
+                            stringResource(R.string.label_notification_transport_hint)
                         },
-                        selectedUseFcm = (uiState.useFcmChannel && fcmSupported)
-                            || uiState.gatewayPrivateChannelEnabled == false,
-                        isFcmSupported = fcmSupported,
-                        isPrivateSupported = uiState.gatewayPrivateChannelEnabled != false,
-                        onSelectUseFcm = { useFcm -> viewModel.updateUseFcmChannel(context, useFcm) },
-                    )
-                }
-            }
-            if (
-                uiState.isChannelModeLoaded
-                && uiState.gatewayPrivateChannelEnabled != false
-                && (!fcmSupported || !uiState.useFcmChannel)
-            ) {
-                item {
-                    SettingsRow(
-                        testTag = "row.settings.private_transport",
-                        icon = Icons.Outlined.NotificationsActive,
-                        title = stringResource(R.string.label_private_transport_status),
-                        subtitle = uiState.privateTransportStatus,
-                        onClick = null,
                     )
                 }
             }
@@ -979,10 +955,6 @@ private fun TransportSelectorRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String?,
-    selectedUseFcm: Boolean,
-    isFcmSupported: Boolean,
-    isPrivateSupported: Boolean,
-    onSelectUseFcm: (Boolean) -> Unit,
 ) {
     val uiColors = PushGoThemeExtras.colors
     SettingsItemContainer {
@@ -996,48 +968,11 @@ private fun TransportSelectorRow(
                     if (!subtitle.isNullOrBlank()) {
                         Text(subtitle)
                     }
-                    SingleChoiceSegmentedButtonRow(
-                        modifier = Modifier.testTag("segmented.settings.notification_transport"),
-                    ) {
-                        SegmentedButton(
-                            selected = selectedUseFcm,
-                            onClick = {
-                                if (!selectedUseFcm) {
-                                    onSelectUseFcm(true)
-                                }
-                            },
-                            enabled = isFcmSupported,
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                            modifier = Modifier.testTag("option.settings.notification_transport.fcm"),
-                            icon = {},
-                            colors = pushGoSegmentedButtonColors(),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.label_transport_fcm),
-                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
-                                modifier = Modifier.padding(vertical = 1.dp),
-                            )
-                        }
-                        SegmentedButton(
-                            selected = !selectedUseFcm,
-                            onClick = {
-                                if (selectedUseFcm) {
-                                    onSelectUseFcm(false)
-                                }
-                            },
-                            enabled = isPrivateSupported,
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                            modifier = Modifier.testTag("option.settings.notification_transport.private"),
-                            icon = {},
-                            colors = pushGoSegmentedButtonColors(),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.label_transport_private),
-                                style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
-                                modifier = Modifier.padding(vertical = 1.dp),
-                            )
-                        }
-                    }
+                    Text(
+                        text = stringResource(R.string.label_transport_fcm),
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.testTag("option.settings.notification_transport.huawei"),
+                    )
                 }
             },
             leadingContent = {

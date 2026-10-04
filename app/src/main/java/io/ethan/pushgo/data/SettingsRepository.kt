@@ -20,7 +20,7 @@ class SettingsRepository(
     private val settingsCache: SharedPreferences,
 ) {
     private val settingsFlow = appSettingsDao.observe()
-    private val fcmTokenState = MutableStateFlow(secretStore.fcmToken())
+    private val fcmTokenState = MutableStateFlow(secretStore.hmsToken())
 
     val serverAddressFlow: Flow<String?> = settingsFlow
         .map { it?.serverAddress }
@@ -39,7 +39,7 @@ class SettingsRepository(
             .distinctUntilChanged()
     val useFcmChannelFlow: Flow<Boolean> =
         settingsFlow
-            .map { it?.useFcmChannel ?: getCachedUseFcmChannel() }
+            .map { true }
             .distinctUntilChanged()
     val fcmTokenFlow: StateFlow<String?> = fcmTokenState.asStateFlow()
     val updateAutoCheckEnabledFlow: Flow<Boolean> =
@@ -52,7 +52,7 @@ class SettingsRepository(
             .distinctUntilChanged()
 
     fun getCachedUseFcmChannel(): Boolean =
-        settingsCache.getBoolean(KEY_USE_FCM_CHANNEL, true)
+        true
 
     fun getCachedMessagePageEnabled(): Boolean =
         settingsCache.getBoolean(KEY_MESSAGE_PAGE_ENABLED, true)
@@ -231,17 +231,17 @@ class SettingsRepository(
     }
 
     suspend fun getFcmToken(): String? {
-        return secretStore.fcmToken()
+        return secretStore.hmsToken()
     }
 
     suspend fun setFcmToken(token: String?) {
         val normalized = token?.trim()?.ifEmpty { null }
-        secretStore.setFcmToken(normalized)
+        secretStore.setHmsToken(normalized)
         fcmTokenState.value = normalized
         updateSettings { it.copy(fcmToken = null) }
     }
 
-    suspend fun getUseFcmChannel(): Boolean = loadSettings().useFcmChannel
+    suspend fun getUseFcmChannel(): Boolean = true
 
     suspend fun getMessagePageEnabled(): Boolean = loadSettings().isMessagePageEnabled
 
@@ -250,7 +250,7 @@ class SettingsRepository(
     suspend fun getThingPageEnabled(): Boolean = loadSettings().isThingPageEnabled
 
     suspend fun setUseFcmChannel(enabled: Boolean) {
-        updateSettings { it.copy(useFcmChannel = enabled) }
+        updateSettings { it.copy(useFcmChannel = true) }
     }
 
     suspend fun setMessagePageEnabled(enabled: Boolean) {

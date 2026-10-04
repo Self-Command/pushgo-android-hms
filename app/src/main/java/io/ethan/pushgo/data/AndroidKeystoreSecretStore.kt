@@ -44,6 +44,17 @@ class AndroidKeystoreSecretStore(context: Context) : SecureSecretStore {
         putString(gatewayAckTokenKey(gatewayUrl), token?.trim()?.ifEmpty { null })
     }
 
+    override fun hmsToken(): String? = getString("hms_push_token")?.trim()?.ifEmpty { null }
+    override fun setHmsToken(token: String?) {
+        val normalized = token?.trim()?.ifEmpty { null }
+        val encrypted = normalized?.let {
+            encrypt(it.toByteArray(Charsets.UTF_8)) ?: error("HMS token encryption failed")
+        }
+        check(prefs.edit().apply {
+            if (encrypted == null) remove("hms_push_token") else putString("hms_push_token", encrypted)
+        }.commit()) { "HMS token persistence failed" }
+    }
+
     override fun fcmToken(): String? {
         return getString(SECRET_FCM_TOKEN)?.trim()?.ifEmpty { null }
     }

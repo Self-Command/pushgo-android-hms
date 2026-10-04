@@ -1,6 +1,7 @@
 package io.ethan.pushgo.util
 
 import java.net.URI
+import io.ethan.pushgo.BuildConfig
 
 object UrlValidators {
     private const val HTTPS_PREFIX = "https://"
@@ -31,7 +32,7 @@ object UrlValidators {
                 }
             }
             "http" -> {
-                if (!LOOPBACK_HTTP_HOSTS.contains(host)) {
+                if (!LOOPBACK_HTTP_HOSTS.contains(host) && host != BuildConfig.HMS_LAN_HTTP_HOST) {
                     return null
                 }
                 if (port > 0) {

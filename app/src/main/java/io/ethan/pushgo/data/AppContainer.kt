@@ -24,7 +24,7 @@ class AppContainer(
 ) {
     val appContext = context.applicationContext
     val coroutineDispatchers = AppCoroutineDispatchers()
-    val pushTokenProvider: PushTokenProvider = FirebasePushTokenProvider()
+    val pushTokenProvider: PushTokenProvider = HuaweiPushTokenProvider(appContext)
     internal val database = PushGoDatabase.build(appContext)
     internal val secureSecretStore: SecureSecretStore = AndroidKeystoreSecretStore(appContext)
 

@@ -7,6 +7,8 @@ interface SecureSecretStore {
     fun gatewayAckToken(gatewayUrl: String): String?
     fun setGatewayAckToken(gatewayUrl: String, token: String?)
 
+    fun hmsToken(): String? = null
+    fun setHmsToken(token: String?) { error("HMS token storage not implemented") }
     fun fcmToken(): String?
     fun setFcmToken(token: String?)
 

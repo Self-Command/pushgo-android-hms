@@ -1,29 +1,20 @@
 package io.ethan.pushgo.notifications
 
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
-import io.ethan.pushgo.PushGoApp
+import android.os.Bundle
+import com.huawei.hms.push.HmsMessageService
+import com.huawei.hms.push.RemoteMessage
 
-class PushGoMessagingService : FirebaseMessagingService() {
-    companion object {
-        private const val TAG = "PushGoMessagingService"
-    }
-
+class PushGoMessagingService : HmsMessageService() {
     override fun onMessageReceived(message: RemoteMessage) {
-        runCatching {
-            InboundMessageWorker.enqueue(
-                context = applicationContext,
-                messageData = message.data,
-                transportMessageId = message.messageId,
-            )
-        }.onFailure { error ->
-            io.ethan.pushgo.util.SilentSink.e(TAG, "onMessageReceived failed", error)
-        }
+        val data = message.dataOfMap.takeIf { it.isNotEmpty() }
+            ?: InboundMessagePayloadCodec.decode(message.data.orEmpty()) ?: return
+        InboundMessageWorker.enqueue(applicationContext, data, message.messageId)
     }
-
-    @Deprecated("Firebase still dispatches FCM token refresh through this callback.")
-    override fun onNewToken(token: String) {
-        val app = application as PushGoApp
-        app.handlePushTokenUpdate(token)
+    override fun onNewToken(token: String) { HmsTokenSyncWorker.accept(applicationContext, token) }
+    override fun onNewToken(token: String, bundle: Bundle) { HmsTokenSyncWorker.accept(applicationContext, token) }
+    override fun onTokenError(error: Exception) {
+        io.ethan.pushgo.util.SilentSink.w("HmsPush", "Token acquisition failed")
+        HmsTokenSyncWorker.scheduleAcquisition(applicationContext)
     }
+    override fun onTokenError(error: Exception, bundle: Bundle) { onTokenError(error) }
 }

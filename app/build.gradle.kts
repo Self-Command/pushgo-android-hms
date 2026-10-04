@@ -7,8 +7,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
-    id("com.google.gms.google-services") apply false
 }
+
+apply(plugin = "com.huawei.agconnect")
 
 ksp {
     arg("room.schemaLocation", file("schemas").path)
@@ -84,7 +85,7 @@ val privateCertPinSha256 = project.resolveSigningProperty("PUSHGO_PRIVATE_CERT_P
 val updateFeedUrl = project.resolveSigningProperty("PUSHGO_UPDATE_FEED_URL")
     ?.trim()
     ?.takeIf { it.isNotEmpty() }
-    ?: "https://update.pushgo.cn/android/update-feed-v1.json"
+    ?: "" // Configure an HMS-specific signed feed; the official feed distributes FCM builds.
 val updateFeedEcdsaP256PublicKeyB64 = project.resolveSigningProperty("PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64")
     ?.trim()
     ?.replace("\"", "")
@@ -124,8 +125,16 @@ val verifyRustJniContract = tasks.register<Exec>("verifyRustJniContract") {
 
 android {
     namespace = "io.ethan.pushgo"
-    compileSdk = 37
+    compileSdk { version = release(37) { minorApiLevel = 0 } }
     ndkVersion = androidNdkVersion
+    project.resolveSigningProperty("PUSHGO_HMS_DEBUG_STORE_FILE")?.let { testStore ->
+        signingConfigs.getByName("debug") {
+            storeFile = File(testStore)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     val releaseSigningConfig = if (
         !releaseStoreFile.isNullOrBlank()
@@ -146,11 +155,13 @@ android {
     defaultConfig {
         applicationId = "io.ethan.pushgo"
         minSdk = androidMinSdk
+        targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
         testInstrumentationRunner = "io.ethan.pushgo.test.PushGoAndroidJUnitRunner"
         buildConfigField("String", "PRIVATE_CERT_PIN_SHA256", "\"$privateCertPinSha256\"")
         buildConfigField("String", "DEFAULT_UPDATE_FEED_URL", "\"$updateFeedUrl\"")
+        buildConfigField("String", "HMS_LAN_HTTP_HOST", "\"\"")
         buildConfigField("String", "UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64", "\"$updateFeedEcdsaP256PublicKeyB64\"")
 
         vectorDrawables {
@@ -170,6 +181,13 @@ android {
             if (releaseSigningConfig != null) {
                 signingConfig = releaseSigningConfig
             }
+        }
+        create("hmsLan") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            buildConfigField("String", "HMS_LAN_HTTP_HOST", "\"192.168.1.6\"")
+            buildConfigField("String", "DEFAULT_SERVER_ADDRESS", "\"http://192.168.1.6:6666\"")
         }
     }
 
@@ -199,9 +217,18 @@ android {
     }
 
     sourceSets {
-        getByName("main") {
-            jniLibs.directories.add(generatedRustJniDir.absolutePath)
+        getByName("hmsLan") {
+            kotlin.directories.add("src/release/java")
         }
+        getByName("main") {
+            // No private-stream native libraries in the HMS distribution.
+        }
+    }
+}
+
+androidComponents {
+    beforeVariants(selector().withBuildType("hmsLan")) {
+        it.hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
     }
 }
 
@@ -219,7 +246,7 @@ configurations.configureEach {
 }
 
 tasks.named("preBuild").configure {
-    dependsOn(buildRustJniLibs)
+    // The HMS distribution does not package or run the private-stream JNI.
 }
 
 tasks.named("check").configure {
@@ -253,18 +280,8 @@ tasks.configureEach {
     }
 }
 
-val hasGoogleServices = listOf(
-    file("google-services.json"),
-    file("src/google-services.json"),
-    file("src/debug/google-services.json"),
-    file("src/release/google-services.json"),
-).any { it.exists() }
-
-if (hasGoogleServices) {
-    apply(plugin = "com.google.gms.google-services")
-}
-
 dependencies {
+    implementation("com.huawei.hms:push:6.13.0.301")
     implementation(platform("androidx.compose:compose-bom:2026.06.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -304,9 +321,6 @@ dependencies {
     implementation("io.noties.markwon:html:4.6.2")
     implementation("io.noties.markwon:linkify:4.6.2")
     implementation("io.noties.markwon:image:4.6.2")
-    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
-    implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.android.gms:play-services-base:18.10.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")

@@ -12,7 +12,6 @@ import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
-import com.google.firebase.messaging.FirebaseMessaging
 import io.ethan.pushgo.data.AppContainer
 import io.ethan.pushgo.automation.PushGoAutomation
 import io.ethan.pushgo.data.ImageCacheCleanupScheduler
@@ -102,14 +101,8 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
     fun cachedUseFcmChannel(): Boolean = cachedUseFcmChannel
     fun isAppVisible(): Boolean = startedActivities > 0
 
-    fun shouldRunPrivateChannelForegroundService(): Boolean {
-        if (PushGoAutomation.isSessionConfigured() || isEffectiveFcmModeEnabled()) {
-            return false
-        }
-        val container = containerOrNull() ?: return false
-        val snapshot = container.privateChannelClient.readConnectionSnapshot()
-        return startedActivities > 0 || snapshot.keepaliveState != KeepaliveState.FGS_LOST
-    }
+    fun shouldRunPrivateChannelForegroundService(): Boolean = false
+
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val imageStoreForCoil by lazy { MessageImageStore(this) }
@@ -144,6 +137,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             return
         }
         container.pendingLocalDeletionCoordinator.start()
+        io.ethan.pushgo.notifications.HmsTokenSyncWorker.scheduleAcquisition(this)
         cachedUseFcmChannel = container.settingsRepository.getCachedUseFcmChannel()
         appScope.launch {
             runCatching {
@@ -445,13 +439,13 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         appScope.launch {
             runCatching { requestFcmTokenWithRetry() }
                 .onSuccess { token ->
-                    io.ethan.pushgo.util.SilentSink.i(TAG, "startup FCM token fetch succeeded")
+                    io.ethan.pushgo.util.SilentSink.i(TAG, "startup HMS token fetch succeeded")
                     handlePushTokenUpdate(token)
                 }
                 .onFailure { error ->
-                    io.ethan.pushgo.util.SilentSink.w(TAG, "startup FCM token fetch failed: ${error.message}", error)
+                    io.ethan.pushgo.util.SilentSink.w(TAG, "startup HMS token fetch failed: ${error.message}", error)
                     PushGoAutomation.recordRuntimeError(
-                        source = "provider.fcm_token.startup",
+                        source = "provider.hms_token.startup",
                         error = error,
                         category = "provider",
                     )
@@ -467,6 +461,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             try {
                 return requestFcmTokenOnce()
             } catch (error: Throwable) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
                 lastError = error
                 io.ethan.pushgo.util.SilentSink.w(
                     TAG,
@@ -479,45 +474,15 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 delay((attempt + 1) * FCM_TOKEN_RETRY_BASE_DELAY_MS)
             }
         }
-        throw lastError ?: IllegalStateException("Unable to get FCM token")
+        throw lastError ?: IllegalStateException("Unable to get HMS token")
     }
 
-    private fun isRetriableFcmTokenError(error: Throwable): Boolean {
-        val message = buildString {
-            append(error.message.orEmpty())
-            val cause = error.cause
-            if (cause != null) {
-                append(" ")
-                append(cause.message.orEmpty())
-            }
-        }.uppercase()
-        return message.contains("SERVICE_NOT_AVAILABLE")
-            || message.contains("INTERNAL_SERVER_ERROR")
-            || message.contains("TIMEOUT")
-    }
+    private fun isRetriableFcmTokenError(error: Throwable): Boolean = error !is kotlinx.coroutines.CancellationException
 
-    @Suppress("DEPRECATION")
-    private fun firebaseTokenTask() = FirebaseMessaging.getInstance().token
 
-    private suspend fun requestFcmTokenOnce(): String = withTimeout(io.ethan.pushgo.data.AppConstants.fcmTokenTimeoutMs) {
-        suspendCancellableCoroutine { cont ->
-            firebaseTokenTask()
-                .addOnSuccessListener { token ->
-                    if (cont.isActive) {
-                        cont.resume(token)
-                    }
-                }
-                .addOnFailureListener { error ->
-                    if (cont.isActive) {
-                        cont.resumeWithException(IllegalStateException("Unable to get FCM token", error))
-                    }
-                }
-                .addOnCanceledListener {
-                    if (cont.isActive) {
-                        cont.resumeWithException(IllegalStateException("FCM token task cancelled"))
-                    }
-                }
-        }
+    private suspend fun requestFcmTokenOnce(): String {
+        return container.pushTokenProvider.fetchToken(io.ethan.pushgo.data.AppConstants.fcmTokenTimeoutMs)
+            ?: throw IllegalStateException("Huawei token unavailable; waiting for callback or retry")
     }
 
     private fun isFcmSupported(): Boolean {
@@ -525,7 +490,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
     }
 
     private fun effectiveFcmModeForSelection(useFcmChannel: Boolean): Boolean {
-        return useFcmChannel && isFcmSupported()
+        return true
     }
 
     private fun isEffectiveFcmModeEnabled(): Boolean {

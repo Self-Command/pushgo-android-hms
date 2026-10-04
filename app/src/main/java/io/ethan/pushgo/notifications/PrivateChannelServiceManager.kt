@@ -66,7 +66,7 @@ class PrivateChannelServiceManager(private val context: Context) {
             intent: Intent,
         ) {
             val appContext = context.applicationContext
-            ContextCompat.startForegroundService(appContext, intent)
+            context.stopService(intent)
         }
 
         fun refresh(context: Context) {
@@ -74,11 +74,7 @@ class PrivateChannelServiceManager(private val context: Context) {
         }
 
         fun refreshForMode(context: Context, useFcmChannel: Boolean) {
-            if (PushGoAutomation.isSessionConfigured() || useFcmChannel) {
-                stopNow(context)
-            } else {
-                refresh(context)
-            }
+            stopNow(context)
         }
 
         fun enqueueRefresh(context: Context) {

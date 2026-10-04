@@ -105,13 +105,13 @@
     <string name="section_connection_device">Connection &amp; Device</string><string name="section_channels">Channels</string>
     <string name="section_notification_settings">Notification Settings</string>
     <string name="label_notification_transport">Notification transport</string>
-    <string name="label_notification_transport_hint">Choose whether Android receives pushes through FCM or the private channel.</string>
-    <string name="label_notification_transport_private_only_hint">This device does not support FCM. Pushes will use the private channel.</string>
-    <string name="label_notification_transport_gateway_private_disabled_hint">Gateway private channel is disabled. Android can only use FCM on this gateway.</string>
-    <string name="label_notification_transport_unavailable_hint">Gateway private channel is disabled and this device does not support FCM. Push delivery is unavailable.</string>
+    <string name="label_notification_transport_hint">Uses Huawei HMS Push Kit. Waits for HMS recovery when unavailable.</string>
+    <string name="label_notification_transport_private_only_hint">Uses Huawei HMS Push Kit. Waits for HMS recovery when unavailable.</string>
+    <string name="label_notification_transport_gateway_private_disabled_hint">Uses Huawei HMS Push Kit. Waits for HMS recovery when unavailable.</string>
+    <string name="label_notification_transport_unavailable_hint">Uses Huawei HMS Push Kit. Waits for HMS recovery when unavailable.</string>
     <string name="label_notification_settings">Notification settings</string>
     <string name="label_notification_settings_hint">Open system notification settings for PushGo.</string>
-    <string name="label_transport_fcm">FCM</string>
+    <string name="label_transport_fcm">HMS</string>
     <string name="label_transport_private">Private</string>
     <string name="label_private_transport_status">Private transport status</string>
     <string name="private_transport_status_disconnected">Not connected</string>
@@ -180,13 +180,13 @@
     <string name="error_invalid_base64">Invalid Base64</string>
     <string name="error_invalid_hex">Invalid hex</string>
     <string name="error_invalid_key_length">Key length must be 128/192/256-bit.</string>
-    <string name="error_unable_to_get_fcm_token">Unable to get FCM token</string>
-    <string name="error_fcm_token_network_unavailable">Unable to get FCM token: network to Google services is unavailable</string>
-    <string name="error_fcm_token_project_not_configured">Unable to get FCM token: Firebase project config is invalid for this app</string>
-    <string name="error_fcm_token_auth_failed">Unable to get FCM token: Firebase authentication failed</string>
-    <string name="error_fcm_not_supported">This device does not support FCM</string>
-    <string name="error_fcm_token_timeout">FCM token request timed out</string>
-    <string name="error_gateway_private_disabled_use_fcm">Gateway private channel is disabled. Please use FCM.</string>
+    <string name="error_unable_to_get_fcm_token">Unable to get HMS token</string>
+    <string name="error_fcm_token_network_unavailable">Unable to get HMS token: network to Huawei services is unavailable</string>
+    <string name="error_fcm_token_project_not_configured">Unable to get HMS token: Huawei project config is invalid for this app</string>
+    <string name="error_fcm_token_auth_failed">Unable to get HMS token: Huawei authentication failed</string>
+    <string name="error_fcm_not_supported">This device does not support HMS</string>
+    <string name="error_fcm_token_timeout">HMS token request timed out</string>
+    <string name="error_gateway_private_disabled_use_fcm">Gateway private channel is disabled. Please use HMS.</string>
     <string name="error_gateway_auth_failed" tools:ignore="MissingTranslation">Authentication failed. Check the gateway token and try again.</string>
     <string name="error_gateway_permission_denied" tools:ignore="MissingTranslation">Permission denied. Check the gateway settings and try again.</string>
     <string name="error_gateway_rate_limited" tools:ignore="MissingTranslation">Too many requests. Please wait a moment and try again.</string>
@@ -202,7 +202,7 @@
     <string name="error_gateway_device_registration_stale" tools:ignore="MissingTranslation">Device registration expired. Please retry.</string>
     <string name="error_gateway_device_route_stale" tools:ignore="MissingTranslation">Device route expired. Please retry.</string>
     <string name="error_gateway_route_not_found" tools:ignore="MissingTranslation">This gateway does not support the requested API route.</string>
-    <string name="error_private_disabled_and_fcm_unavailable">Gateway private channel is disabled and this device cannot use FCM. Push is unavailable.</string>
+    <string name="error_private_disabled_and_fcm_unavailable">Gateway private channel is disabled and this device cannot use HMS. Push is unavailable.</string>
     <string name="error_request_failed">Request failed. Please retry.</string>
     <string name="error_private_channel_create_failed">Private channel create failed. Please retry.</string>
     <string name="error_private_channel_subscribe_failed">Private channel subscribe failed. Check channel ID/password and try again.</string>

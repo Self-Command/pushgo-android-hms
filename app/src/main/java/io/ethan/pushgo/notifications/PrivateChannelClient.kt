@@ -181,7 +181,7 @@ class PrivateChannelClient(
     private var keepaliveState = KeepaliveState.NOT_REQUIRED
     private val connectionSnapshotState = MutableStateFlow(buildConnectionSnapshot())
     private var keepaliveLossSticky = false
-    private var fcmAvailable = false
+    private var fcmAvailable = true
     private var systemToken: String? = null
     private var runtimeConfigured = false
     private var failureStreak = 0
@@ -261,7 +261,8 @@ class PrivateChannelClient(
         val wasConfigured = runtimeConfigured
         val previousFcmAvailable = this.fcmAvailable
         runtimeConfigured = true
-        this.fcmAvailable = fcmAvailable
+        val fcmAvailable = true // HMS build never starts a private stream.
+        this.fcmAvailable = true
         this.systemToken = systemToken
         if (fcmAvailable) {
             keepaliveLossSticky = false
@@ -276,7 +277,7 @@ class PrivateChannelClient(
         if (fcmAvailable) {
             saveTransportStatus(
                 route = "provider",
-                transport = "fcm",
+                transport = "huawei",
                 stage = "active",
                 detail = "private channel disabled by provider mode",
             )
@@ -697,12 +698,13 @@ class PrivateChannelClient(
     }
 
     suspend fun switchToPrivateAndRetireProvider(channelType: String, providerToken: String?) {
+        check(false) { "Private push transport is disabled in the HMS distribution" }
         val (baseUrl, token) = channelRepository.loadGatewayConfig()
         withDeviceStateRetry(baseUrl, token) { state ->
             ensurePrivateRoute(baseUrl, token, state, force = true)
             val normalizedProviderToken = providerToken?.trim().orEmpty()
             if (
-                channelType.trim().equals("fcm", ignoreCase = true) &&
+                channelType.trim().equals("huawei", ignoreCase = true) &&
                 normalizedProviderToken.isNotEmpty()
             ) {
                 privatePost(
@@ -2869,7 +2871,7 @@ class PrivateChannelClient(
         val eventType = root.optString("type").trim().lowercase()
         lifecycleMutex.withLock {
             runtimeConfigured = true
-            fcmAvailable = false
+            fcmAvailable = true
             activeLoopToken = loopToken
             activeSessionHandle = sessionHandle
             activeSessionGeneration = sessionGeneration
@@ -3035,7 +3037,7 @@ class PrivateChannelClient(
         }
         saveTransportStatus(
             route = if (fcmAvailable) "provider" else "private",
-            transport = if (fcmAvailable) "fcm" else "none",
+            transport = if (fcmAvailable) "huawei" else "none",
             stage = if (fcmAvailable) "active" else "idle",
             detail = if (fcmAvailable) {
                 "private channel disabled by provider mode"
@@ -3141,7 +3143,7 @@ class PrivateChannelClient(
     private fun defaultTransportStatus(detail: String? = null): TransportStatus {
         return TransportStatus(
             route = if (fcmAvailable) "provider" else "private",
-            transport = if (fcmAvailable) "fcm" else "none",
+            transport = if (fcmAvailable) "huawei" else "none",
             stage = if (fcmAvailable) "active" else "idle",
             detail = detail ?: if (fcmAvailable) {
                 "private channel disabled by provider mode"

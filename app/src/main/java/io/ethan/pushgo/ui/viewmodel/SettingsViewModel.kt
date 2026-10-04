@@ -74,8 +74,8 @@ class SettingsViewModel(
 ) : ViewModel() {
     companion object {
         private const val TAG = "SettingsViewModel"
-        private const val FCM_TOKEN_MAX_ATTEMPTS = 3
-        private const val FCM_TOKEN_RETRY_BASE_DELAY_MS = 1_500L
+        private const val HMS_TOKEN_MAX_ATTEMPTS = 3
+        private const val HMS_TOKEN_RETRY_BASE_DELAY_MS = 1_500L
     }
 
     var gatewayAddress by mutableStateOf("")
@@ -406,7 +406,7 @@ class SettingsViewModel(
                 settingsRepository.setUseFcmChannel(false)
                 privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
             }
-            io.ethan.pushgo.util.SilentSink.w(TAG, "FCM enabled but token is unavailable now")
+            io.ethan.pushgo.util.SilentSink.w(TAG, "HMS enabled but token is unavailable now")
             return
         }
         runCatching {
@@ -422,78 +422,21 @@ class SettingsViewModel(
     }
 
     fun ensurePrivateTransportWhenFcmUnsupported(context: Context) {
-        viewModelScope.launch {
-            val supported = isFcmSupported(context)
-            isFcmSupported = supported
-            if (supported || !useFcmChannel) {
-                return@launch
-            }
-            val privateEnabled = gatewayPrivateChannelEnabledFetcher()
-            gatewayPrivateChannelEnabled = privateEnabled
-            if (privateEnabled == false) {
-                errorMessage = ResMessage(R.string.error_private_disabled_and_fcm_unavailable)
-                return@launch
-            }
-            settingsRepository.setUseFcmChannel(false)
-            settingsRepository.setFcmToken(null)
-            useFcmChannel = false
-            privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
-            PrivateChannelServiceManager.refreshForMode(context, false)
-        }
+        isFcmSupported = isFcmSupported(context)
+        useFcmChannel = true
+        PrivateChannelServiceManager.stopNow(context)
     }
+
 
     fun updateUseFcmChannel(context: Context, enabled: Boolean) {
         viewModelScope.launch {
-            val previousUseFcmChannel = useFcmChannel
-            isFcmSupported = isFcmSupported(context)
-            if (!enabled) {
-                val privateEnabled = gatewayPrivateChannelEnabledFetcher()
-                gatewayPrivateChannelEnabled = privateEnabled
-                if (privateEnabled == false) {
-                    if (isFcmSupported) {
-                        errorMessage = ResMessage(R.string.error_gateway_private_disabled_use_fcm)
-                    } else {
-                        errorMessage = ResMessage(R.string.error_private_disabled_and_fcm_unavailable)
-                    }
-                    settingsRepository.setUseFcmChannel(true)
-                    useFcmChannel = true
-                    enableFcmProvider(context, keepEnabledWhenTokenMissing = true)
-                    PrivateChannelServiceManager.refreshForMode(context, true)
-                    return@launch
-                }
-            }
-            if (enabled == useFcmChannel) {
-                if (!enabled || isFcmSupported) {
-                    return@launch
-                }
-            }
-            if (enabled) {
-                if (!isFcmSupported) {
-                    settingsRepository.setUseFcmChannel(false)
-                    privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
-                    PrivateChannelServiceManager.refreshForMode(context, false)
-                    errorMessage = ResMessage(R.string.error_fcm_not_supported)
-                    return@launch
-                }
-                enableFcmProvider(context, keepEnabledWhenTokenMissing = true)
-                PrivateChannelServiceManager.refreshForMode(context, true)
-            } else {
-                val oldToken = settingsRepository.getFcmToken()
-                runCatching {
-                    privateChannelClient.switchToPrivateAndRetireProvider("fcm", oldToken)
-                }.onFailure {
-                    io.ethan.pushgo.util.SilentSink.w(TAG, "switchToPrivateAndRetireProvider failed: ${it.message}", it)
-                }
-                settingsRepository.setUseFcmChannel(false)
-                settingsRepository.setFcmToken(null)
-                privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
-                PrivateChannelServiceManager.refreshForMode(context, false)
-                if (previousUseFcmChannel) {
-                    shouldShowPrivateChannelWhitelistDialog = true
-                }
-            }
+            settingsRepository.setUseFcmChannel(true)
+            useFcmChannel = true
+            enableFcmProvider(context, keepEnabledWhenTokenMissing = true)
+            PrivateChannelServiceManager.stopNow(context)
         }
     }
+
 
     private suspend fun requireFcmToken(context: Context): String? {
         isFcmSupported = isFcmSupported(context)
@@ -504,11 +447,11 @@ class SettingsViewModel(
         return try {
             fetchFcmTokenWithRetry()
         } catch (ex: TimeoutCancellationException) {
-            io.ethan.pushgo.util.SilentSink.w(TAG, "FCM token request timed out", ex)
+            io.ethan.pushgo.util.SilentSink.w(TAG, "HMS token request timed out", ex)
             errorMessage = ResMessage(R.string.error_fcm_token_timeout)
             null
         } catch (ex: Exception) {
-            io.ethan.pushgo.util.SilentSink.e(TAG, "Unable to get FCM token: ${ex.message}", ex)
+            io.ethan.pushgo.util.SilentSink.e(TAG, "Unable to get HMS token: ${ex.message}", ex)
             errorMessage = ResMessage(classifyFcmTokenFailureRes(ex))
             null
         }
@@ -520,7 +463,7 @@ class SettingsViewModel(
 
     private fun shouldUseFcm(context: Context): Boolean {
         isFcmSupported = isFcmSupported(context)
-        return useFcmChannel && isFcmSupported
+        return true
     }
 
     fun channelRemovalUsesProvider(context: Context): Boolean {
@@ -529,69 +472,35 @@ class SettingsViewModel(
 
     private suspend fun fetchFcmTokenWithRetry(): String {
         var lastError: Throwable? = null
-        repeat(FCM_TOKEN_MAX_ATTEMPTS) { attempt ->
+        repeat(HMS_TOKEN_MAX_ATTEMPTS) { attempt ->
             try {
                 return fetchFcmTokenOnce()
             } catch (ex: Throwable) {
+                if (ex is kotlinx.coroutines.CancellationException) throw ex
                 lastError = ex
                 io.ethan.pushgo.util.SilentSink.w(
                     TAG,
-                    "fetchFcmToken attempt=${attempt + 1}/$FCM_TOKEN_MAX_ATTEMPTS failed: ${ex.message}",
+                    "fetchFcmToken attempt=${attempt + 1}/$HMS_TOKEN_MAX_ATTEMPTS failed: ${ex.message}",
                     ex
                 )
-                if (!isRetriableFcmTokenError(ex) || attempt == FCM_TOKEN_MAX_ATTEMPTS - 1) {
+                if (!isRetriableFcmTokenError(ex) || attempt == HMS_TOKEN_MAX_ATTEMPTS - 1) {
                     throw ex
                 }
-                delay((attempt + 1) * FCM_TOKEN_RETRY_BASE_DELAY_MS)
+                delay((attempt + 1) * HMS_TOKEN_RETRY_BASE_DELAY_MS)
             }
         }
-        throw lastError ?: IllegalStateException("Unable to get FCM token")
+        throw lastError ?: IllegalStateException("Unable to get HMS token")
     }
 
-    private fun isRetriableFcmTokenError(error: Throwable): Boolean {
-        val message = collectErrorMessages(error)
-        return message.contains("SERVICE_NOT_AVAILABLE")
-            || message.contains("INTERNAL_SERVER_ERROR")
-            || message.contains("TIMEOUT")
-    }
+    private fun isRetriableFcmTokenError(error: Throwable): Boolean = error !is kotlinx.coroutines.CancellationException
 
     private fun classifyFcmTokenFailureRes(error: Throwable): Int {
-        val message = collectErrorMessages(error)
-        if (message.contains("SERVICE_NOT_AVAILABLE")
-            || message.contains("INTERNAL_SERVER_ERROR")
-            || message.contains("TIMEOUT")
-            || message.contains("NETWORK")
-            || message.contains("CONNECTION")
-            || message.contains("UNAVAILABLE")
-            || message.contains("HOST")
-        ) {
-            return R.string.error_fcm_token_network_unavailable
+        val code = (error as? com.huawei.hms.common.ApiException)?.statusCode
+        return when (code) {
+            907135003 -> R.string.error_fcm_token_network_unavailable
+            907122036 -> R.string.error_fcm_token_project_not_configured
+            else -> R.string.error_unable_to_get_fcm_token
         }
-
-        if (message.contains("DEFAULT FIREBASEAPP")
-            || message.contains("NO DEFAULT FIREBASEAPP")
-            || message.contains("MISSING GOOGLE APP ID")
-            || message.contains("MISSING_INSTANCEID_SERVICE")
-            || message.contains("APPLICATION_ID")
-            || message.contains("SENDER_ID")
-            || message.contains("PROJECT_NOT_PERMITTED")
-            || message.contains("API_KEY")
-        ) {
-            return R.string.error_fcm_token_project_not_configured
-        }
-
-        if (message.contains("FIS_AUTH_ERROR")
-            || message.contains("AUTHENTICATION")
-            || message.contains("AUTH")
-            || message.contains("INVALID_SENDER")
-            || message.contains("MISMATCH_SENDER_ID")
-            || message.contains("PERMISSION_DENIED")
-            || message.contains("UNREGISTERED")
-        ) {
-            return R.string.error_fcm_token_auth_failed
-        }
-
-        return R.string.error_unable_to_get_fcm_token
     }
 
     private fun collectErrorMessages(error: Throwable): String {
@@ -610,7 +519,7 @@ class SettingsViewModel(
 
     private suspend fun fetchFcmTokenOnce(): String = withTimeout(AppConstants.fcmTokenTimeoutMs) {
         pushTokenProvider.fetchToken(AppConstants.fcmTokenTimeoutMs)
-            ?: throw IllegalStateException("Unable to get FCM token")
+            ?: throw IllegalStateException("Unable to get HMS token")
     }
 
     private fun buildUiState(): SettingsUiState {
@@ -727,7 +636,7 @@ class SettingsViewModel(
                     settingsRepository.setFcmToken(null)
                     privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
                     runCatching {
-                        privateChannelClient.switchToPrivateAndRetireProvider("fcm", previousFcmToken)
+                        privateChannelClient.switchToPrivateAndRetireProvider("huawei", previousFcmToken)
                     }.onFailure {
                         io.ethan.pushgo.util.SilentSink.w(
                             TAG,

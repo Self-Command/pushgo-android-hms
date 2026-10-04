@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <queries>
+        <package android:name="com.huawei.hwid" />
+        <package android:name="com.huawei.hms" />
+        <package android:name="com.huawei.hwid.tv" />
         <intent>
             <action android:name="android.settings.MANAGE_UNKNOWN_APP_SOURCES" />
         </intent>
@@ -37,7 +40,7 @@
             android:name=".notifications.PushGoMessagingService"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+                <action android:name="com.huawei.push.action.MESSAGING_EVENT" />
             </intent-filter>
         </service>
 

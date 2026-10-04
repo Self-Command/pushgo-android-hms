@@ -20,7 +20,7 @@ class ChannelSubscriptionRepository(
     service: ChannelSubscriptionService? = null,
 ) {
     companion object {
-        private const val FCM_CHANNEL_TYPE = "fcm"
+        private const val FCM_CHANNEL_TYPE = "huawei"
         private const val FCM_TOKEN_BOOTSTRAP_TIMEOUT_MS = 10_000L
     }
 

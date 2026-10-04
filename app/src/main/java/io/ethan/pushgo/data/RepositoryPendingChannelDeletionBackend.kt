@@ -58,7 +58,7 @@ class RepositoryPendingChannelDeletionBackend(
     }
 
     override fun currentlyUsesProvider(): Boolean =
-        settingsRepository.getCachedUseFcmChannel() && FcmSupport.isAvailable(appContext)
+        true
 
     override suspend fun existingProviderToken(): String? = settingsRepository.getFcmToken()
 

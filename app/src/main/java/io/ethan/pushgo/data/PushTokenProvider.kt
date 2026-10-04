@@ -1,41 +1,42 @@
 package io.ethan.pushgo.data
 
-import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import android.content.Context
+import com.huawei.agconnect.config.AGConnectServicesConfig
+import com.huawei.hms.aaid.HmsInstanceId
+import io.ethan.pushgo.notifications.HmsTokenSyncWorker
+import kotlinx.coroutines.*
 
-interface PushTokenProvider {
-    suspend fun fetchToken(timeoutMs: Long): String?
+interface PushTokenProvider { suspend fun fetchToken(timeoutMs: Long): String? }
+
+/** One independent getToken request survives waiter timeouts. */
+class HuaweiPushTokenProvider(context: Context) : PushTokenProvider {
+    private val appContext = context.applicationContext
+    private val delegate = SingleFlightPushTokenProvider(
+        fetch = {
+            val appId = AGConnectServicesConfig.fromContext(appContext).getString("client/app_id")
+            require(!appId.isNullOrBlank()) { "Huawei app ID missing" }
+            HmsInstanceId.getInstance(appContext).getToken(appId, "HCM")
+        },
+        onToken = { HmsTokenSyncWorker.accept(appContext, it) },
+    )
+    override suspend fun fetchToken(timeoutMs: Long): String? = delegate.fetchToken(timeoutMs)
 }
 
-class FirebasePushTokenProvider : PushTokenProvider {
-    @Suppress("DEPRECATION")
-    private fun firebaseTokenTask() = FirebaseMessaging.getInstance().token
-
+internal class SingleFlightPushTokenProvider(
+    private val fetch: () -> String?,
+    private val onToken: (String) -> Unit,
+) : PushTokenProvider {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val lock = Any()
+    private var inFlight: Deferred<String?>? = null
     override suspend fun fetchToken(timeoutMs: Long): String? {
-        return withTimeoutOrNull(timeoutMs) {
-            suspendCancellableCoroutine { cont ->
-                firebaseTokenTask()
-                    .addOnSuccessListener { token ->
-                        if (cont.isActive) {
-                            cont.resume(token)
-                        }
-                    }
-                    .addOnFailureListener { error ->
-                        if (cont.isActive) {
-                            cont.resumeWithException(error)
-                        }
-                    }
-                    .addOnCanceledListener {
-                        if (cont.isActive) {
-                            cont.resumeWithException(
-                                IllegalStateException("FCM token task cancelled")
-                            )
-                        }
-                    }
-            }
-        }?.trim()?.ifEmpty { null }
+        val request = synchronized(lock) {
+            inFlight?.takeIf { !it.isCompleted } ?: scope.async {
+                val token = fetch()?.trim()?.ifEmpty { null }
+                token?.let(onToken)
+                token
+            }.also { inFlight = it }
+        }
+        return withTimeoutOrNull(timeoutMs) { request.await() }
     }
 }

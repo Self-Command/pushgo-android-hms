@@ -25,7 +25,7 @@ object UpdateCheckScheduler {
         val appContext = context.applicationContext
         val app = appContext as? PushGoApp
         val container = app?.containerOrNull()
-        if (PushGoAutomation.isSessionConfigured()) {
+        if (PushGoAutomation.isSessionConfigured() || AppConstants.defaultUpdateFeedUrl.isBlank()) {
             WorkManager.getInstance(appContext).cancelUniqueWork(PERIODIC_WORK_NAME)
             WorkManager.getInstance(appContext).cancelUniqueWork(ONE_TIME_WORK_NAME)
             return
