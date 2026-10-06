@@ -40,7 +40,7 @@ class UpdateInstaller(private val context: Context) {
                 require(candidate.apkUrl.startsWith("https://")) { "Release page requires HTTPS" }
                 context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(candidate.apkUrl))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                UpdateInstallStartResult.Started
+                UpdateInstallStartResult.BrowserDownloadOpened
             } catch (error: Exception) {
                 UpdateInstallStartResult.Failed(error.message ?: "Unable to open authenticated release download")
             }

@@ -101,6 +101,7 @@ enum class UpdateInstallProgressStage {
 
 sealed interface UpdateInstallStartResult {
     data object Started : UpdateInstallStartResult
+    data object BrowserDownloadOpened : UpdateInstallStartResult
     data class PermissionRequired(val apkFilePath: String?) : UpdateInstallStartResult
     data class Failed(val message: String) : UpdateInstallStartResult
 }

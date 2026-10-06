@@ -35,6 +35,13 @@ try:
 finally:
     key.unlink(missing_ok=True)
 document = {'payload': payload, 'signatures': {'ecdsa-p256-sha256': base64.b64encode(signature).decode()}}
+pub = Path('.ci/update-public.der')
+pub.write_bytes(base64.b64decode(os.environ['PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64']))
+pem = Path('.ci/update-public.pem')
+subprocess.run(['openssl', 'pkey', '-pubin', '-inform', 'DER', '-in', str(pub), '-out', str(pem)], check=True)
+sig = Path('.ci/update-signature.der')
+sig.write_bytes(signature)
+subprocess.run(['openssl', 'dgst', '-sha256', '-verify', str(pem), '-signature', str(sig)], input=canonical, check=True, capture_output=True)
 out = Path(os.environ['UPDATE_METADATA_FILE'])
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

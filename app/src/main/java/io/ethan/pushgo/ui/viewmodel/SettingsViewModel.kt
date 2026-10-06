@@ -344,6 +344,9 @@ class SettingsViewModel(
                     UpdateInstallStartResult.Started -> {
                         successMessage = ResMessage(R.string.message_update_install_started)
                     }
+                    UpdateInstallStartResult.BrowserDownloadOpened -> {
+                        successMessage = ResMessage(R.string.message_update_private_download)
+                    }
                     is UpdateInstallStartResult.PermissionRequired -> {
                         pendingManualInstallApkPath = result.apkFilePath
                         shouldShowInstallPermissionDialog = true
