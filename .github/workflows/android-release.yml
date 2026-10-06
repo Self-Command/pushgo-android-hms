@@ -55,6 +55,26 @@ jobs:
             echo "prerelease=$prerelease"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Restore Huawei AGC configuration
+        shell: bash
+        env:
+          HMS_AGCONNECT_JSON_B64: ${{ secrets.HMS_AGCONNECT_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$HMS_AGCONNECT_JSON_B64" ]]; then
+            echo 'Set repository secret HMS_AGCONNECT_JSON_B64 for your io.ethan.pushgo app.' >&2
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$HMS_AGCONNECT_JSON_B64" | base64 --decode > app/agconnect-services.json
+          python3 - <<'PY'
+          import json
+          with open('app/agconnect-services.json', encoding='utf-8') as stream:
+              config = json.load(stream)
+          if config.get('client', {}).get('package_name') != 'io.ethan.pushgo':
+              raise SystemExit('AGC package must be io.ethan.pushgo')
+          PY
+
       - name: Extract release notes from release/RELEASE_NOTES
         shell: bash
         run: |

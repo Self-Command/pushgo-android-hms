@@ -9,6 +9,10 @@
 2026-10-05 已在 REDMI Turbo 4 Pro / Android 16 上验证四档优先级、普通消息、超长补拉、去重及事件/对象生命周期。
 上游说明和 MIT 许可证保留如下。
 
+TaskNotes 拍照打卡使用独立业务服务。设置中填写业务 HTTPS 域名后，带合法任务 UUID 链接与 TaskNotes 动作标记的通知显示“去打卡”；通知正文保持原消息详情入口。业务域名和 PushGo 网关地址分别配置，可部署在不同服务器。此次新增按钮已通过单元测试及 APK 构建，真机按钮/拍照联调待执行。
+
+GitHub 正式构建需要仓库所有者在 Actions Secrets 配置 HMS_AGCONNECT_JSON_B64（自行创建的 io.ethan.pushgo AGC JSON 的 Base64），并登记构建签名证书。源码不携带 AGC 文件、签名文件或服务凭据；原正式发布流程的签名、更新 Feed 和部署 Secrets 仍按 .github/workflows/android-release.yml 配置。
+
 PushGo for Android is the official client app for PushGo. It works with PushGo Gateway to receive notifications on Android devices.
 
 ## Project Links
