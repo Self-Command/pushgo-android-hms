@@ -4,11 +4,11 @@
     "distribution": "personal",
     "entries": [
       {
-        "versionCode": 1030499,
-        "versionName": "v1.3.4",
-        "apkUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.4",
-        "apkSha256": "ff5b8db4edb62aff60a3974d17dd0545f075d29d32cad75ec800731ed7374a5c",
-        "releaseNotesUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.4",
+        "versionCode": 1030599,
+        "versionName": "v1.3.5",
+        "apkUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.5",
+        "apkSha256": "0f626be1d277a4f538b2a1d3722aede4d86a33e80e84d209f11c93d5fc193a8d",
+        "releaseNotesUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.5",
         "browserDownload": true,
         "minSdk": 28,
         "allowedAbis": [
@@ -21,6 +21,6 @@
     ]
   },
   "signatures": {
-    "ecdsa-p256-sha256": "MEUCIQCATdn0jcAgH42FMavpDD7ZRb39g5Nq17LQ20hIPE0LZwIgVaDpWYS4YwxZKoFT52/FEQyacv2dAZcr2ZOvlTOz/5g="
+    "ecdsa-p256-sha256": "MEYCIQCodWgLOPgRz/wOk177peiFzeg4cK6+9jyEoDpYFXdWugIhAJw/kzmULlBXVSxfM8ah/aekU8Xe6iuK4HgSigA1TRvV"
   }
 }
