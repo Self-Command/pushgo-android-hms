@@ -1,0 +1,26 @@
+{
+  "payload": {
+    "schemaVersion": 1,
+    "distribution": "personal",
+    "entries": [
+      {
+        "versionCode": 1030499,
+        "versionName": "v1.3.4",
+        "apkUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.4",
+        "apkSha256": "ff5b8db4edb62aff60a3974d17dd0545f075d29d32cad75ec800731ed7374a5c",
+        "releaseNotesUrl": "https://github.com/Self-Command/pushgo-android-personal-build/releases/tag/personal-v1.3.4",
+        "browserDownload": true,
+        "minSdk": 28,
+        "allowedAbis": [
+          "arm64-v8a",
+          "armeabi-v7a",
+          "x86_64"
+        ],
+        "notes": "Official FCM and private transports retained; optional independent Huawei HMS."
+      }
+    ]
+  },
+  "signatures": {
+    "ecdsa-p256-sha256": "MEUCIQCATdn0jcAgH42FMavpDD7ZRb39g5Nq17LQ20hIPE0LZwIgVaDpWYS4YwxZKoFT52/FEQyacv2dAZcr2ZOvlTOz/5g="
+  }
+}
