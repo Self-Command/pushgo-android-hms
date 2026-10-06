@@ -1,11 +1,9 @@
 package io.ethan.pushgo.util
 
 import java.net.URI
-import io.ethan.pushgo.BuildConfig
 
 object UrlValidators {
     private const val HTTPS_PREFIX = "https://"
-    private val LOOPBACK_HTTP_HOSTS = setOf("127.0.0.1", "localhost", "10.0.2.2", "::1")
 
     fun normalizeHttpsUrl(raw: String?): String? {
         val trimmed = raw?.trim().orEmpty()
@@ -23,6 +21,7 @@ object UrlValidators {
             return null
         }
         val port = uri.port
+        if (port == 0 || port > 65535) return null
         val origin = when (scheme) {
             "https" -> {
                 if (port > 0 && port != 443) {
@@ -32,9 +31,6 @@ object UrlValidators {
                 }
             }
             "http" -> {
-                if (!LOOPBACK_HTTP_HOSTS.contains(host) && host != BuildConfig.HMS_LAN_HTTP_HOST) {
-                    return null
-                }
                 if (port > 0) {
                     "http://${urlHost(host)}:$port"
                 } else {

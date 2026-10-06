@@ -589,7 +589,7 @@ class SettingsViewModel(
                         ?.trim()
                         ?.ifEmpty { null }
                         ?: AppConstants.defaultServerAddress
-                ) ?: AppConstants.defaultServerAddress
+                )
                 val previousToken = settingsRepository.getGatewayToken()
                     ?.trim()
                     ?.ifEmpty { null }
@@ -654,7 +654,7 @@ class SettingsViewModel(
                 if (oldIdentity != newIdentity) {
                     privateChannelClient.onGatewayConfigChanged()
                 }
-                if (oldIdentity != newIdentity && !previousDeviceKey.isNullOrBlank()) {
+                if (oldIdentity != newIdentity && previousAddress != null && !previousDeviceKey.isNullOrBlank()) {
                     val previousGatewayAddress = previousAddress
                     val previousGatewayToken = previousToken
                     val previousGatewayDeviceKey = previousDeviceKey

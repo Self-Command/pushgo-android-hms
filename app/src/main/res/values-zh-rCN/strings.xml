@@ -140,7 +140,8 @@
         <item quantity="other">%1$d 条事件或对象通知</item>
     </plurals>
     <string name="message_no_messages_to_clear">没有可清除的消息</string>
-    <string name="error_invalid_server_address">无效的服务器地址 (需要 https)</string>
+    <string name="error_invalid_server_address">无效的服务器地址 (请填写完整的 http:// 或 https:// 地址)</string>
+    <string name="error_gateway_huawei_unsupported">此网关不支持 HMS，请设置你部署的华为版 PushGo 网关地址。</string>
     <string name="error_invalid_base64">无效的 Base64</string>
     <string name="error_invalid_hex">无效的 Hex</string>
     <string name="error_invalid_key_length">密钥长度必须为 128/192/256 位。</string>

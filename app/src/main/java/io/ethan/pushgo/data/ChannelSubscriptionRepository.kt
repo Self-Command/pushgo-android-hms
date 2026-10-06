@@ -4,7 +4,6 @@ import androidx.room.withTransaction
 import io.ethan.pushgo.data.db.PushGoDatabase
 import io.ethan.pushgo.data.model.ChannelSubscription
 import io.ethan.pushgo.notifications.MessageStateCoordinator
-import io.ethan.pushgo.util.UrlValidators
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.net.URLEncoder
@@ -765,11 +764,10 @@ class ChannelSubscriptionRepository(
     }
 
     private suspend fun resolveServerConfig(): ServerConfig {
-        val rawAddress = settingsRepository.getServerAddress()
-            ?.trim()
-            ?.ifEmpty { null }
-            ?: AppConstants.defaultServerAddress
-        val address = UrlValidators.normalizeGatewayBaseUrl(rawAddress) ?: AppConstants.defaultServerAddress
+        val address = GatewayAddressResolver.resolve(
+            savedAddress = settingsRepository.getServerAddress(),
+            defaultAddress = AppConstants.defaultServerAddress,
+        )
         val token = settingsRepository.getGatewayToken()?.trim()?.ifEmpty { null }
             ?: AppConstants.defaultGatewayToken?.trim()?.ifEmpty { null }
         return ServerConfig(address = address, token = token)

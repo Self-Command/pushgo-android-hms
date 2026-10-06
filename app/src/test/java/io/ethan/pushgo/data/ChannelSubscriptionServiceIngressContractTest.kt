@@ -16,6 +16,26 @@ import org.junit.Test
 class ChannelSubscriptionServiceIngressContractTest {
 
     @Test
+    fun channelPage_syncsHmsRouteAndSubscriptionsAgainstSavedHttpGateway() = runBlocking {
+        CapturingGatewayServer(
+            responseBody = """{"success":true,"data":{"device_key":"device-001"}}""",
+            subsequentResponses = listOf(
+                200 to """{"success":true,"data":{"device_key":"device-001","channel_type":"huawei"}}""",
+                200 to """{"success":true,"data":{"total":1,"success":1,"failed":0,"channels":[{"channel_id":"00112233445566778899aabbccddeeff","channel_name":"Test","subscribed":true}]}}""",
+            ),
+        ).use { server ->
+            val baseUrl = GatewayAddressResolver.resolve(server.baseUrl, "https://gateway.pushgo.cn")
+            val service = ChannelSubscriptionService()
+            val registered = service.registerDevice(baseUrl, "test-auth", "android", "device-001")
+            val routed = service.upsertDeviceChannel(baseUrl, "test-auth", registered.deviceKey, "android", "huawei", "test-hms-token")
+            val synced = service.sync(baseUrl, "test-auth", routed.deviceKey, listOf(ChannelSyncItem("00112233445566778899aabbccddeeff", "test-password")))
+            assertTrue(synced.channels.single().subscribed)
+            assertEquals(listOf("/device/register", "/channel/device", "/channel/sync"), server.allRequests().map { it.path })
+            assertEquals("huawei", JSONObject(server.allRequests()[1].body).getString("channel_type"))
+        }
+    }
+
+    @Test
     fun registerDevice_postsIdentityOnlyContract() = runBlocking {
         CapturingGatewayServer(
             responseBody = """{"success":true,"data":{"device_key":"device-001"}}"""

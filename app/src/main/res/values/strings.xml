@@ -176,7 +176,8 @@
     </plurals>
     <string name="message_messages_cleared">Messages cleared</string>
     <string name="message_no_messages_to_clear">No messages to clear</string>
-    <string name="error_invalid_server_address">Invalid server address (https required)</string>
+    <string name="error_invalid_server_address">Invalid server address (use a full http:// or https:// URL)</string>
+    <string name="error_gateway_huawei_unsupported">This gateway does not support HMS. Configure your Huawei-enabled PushGo gateway.</string>
     <string name="error_invalid_base64">Invalid Base64</string>
     <string name="error_invalid_hex">Invalid hex</string>
     <string name="error_invalid_key_length">Key length must be 128/192/256-bit.</string>

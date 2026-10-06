@@ -9,6 +9,25 @@ import org.junit.Test
 
 class GatewayErrorUiTest {
     @Test
+    fun unsupportedHmsGateway_explainsConfigurationProblem() {
+        val error = ChannelSubscriptionException.fromGateway(
+            httpStatus = 400,
+            errorCode = "invalid_channel_type",
+            legacyDetail = "invalid channel_type",
+            problem = null,
+        )
+        val message = error.toUiErrorMessage(R.string.error_request_failed) as ResMessage
+        assertEquals(R.string.error_gateway_huawei_unsupported, message.resId)
+    }
+
+    @Test
+    fun invalidSavedGateway_requestsAddressCorrection() {
+        val error = ChannelSubscriptionException.local("Invalid gateway address", "invalid_server_address")
+        val message = error.toUiErrorMessage(R.string.error_request_failed) as ResMessage
+        assertEquals(R.string.error_invalid_server_address, message.resId)
+    }
+
+    @Test
     fun channelNotFoundUsesSpecificMessage() {
         val error = ChannelSubscriptionException(
             message = "channel not found on gateway",

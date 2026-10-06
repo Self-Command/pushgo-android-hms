@@ -57,6 +57,8 @@ fun Throwable.toUiErrorMessage(@StringRes fallbackResId: Int): UiMessage {
 private fun ChannelSubscriptionException.gatewayCodeResId(): Int? {
     return when {
         matchesCode("authentication_failed") -> R.string.error_gateway_auth_failed
+        matchesCode("invalid_server_address") -> R.string.error_invalid_server_address
+        matchesCode("invalid_channel_type") -> R.string.error_gateway_huawei_unsupported
         matchesCode("channel_not_found") -> R.string.error_gateway_channel_not_found
         matchesCode("channel_id_required") -> R.string.error_channel_id_required
         matchesCode("invalid_channel_id") -> R.string.error_channel_id_invalid

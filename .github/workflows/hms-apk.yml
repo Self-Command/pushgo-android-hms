@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Android version, for example v1.3.1"
+        description: "Android version, for example v1.3.2"
         required: true
-        default: v1.3.1
+        default: v1.3.2
 
 permissions:
   contents: read
@@ -78,6 +78,8 @@ jobs:
           test -n "$EXPECTED_CERTIFICATE"
           signer="$($ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | sed -n 's/Signer #1 certificate SHA-256 digest: //p')"
           test "${signer,,}" = "${EXPECTED_CERTIFICATE,,}"
+          python3 scripts/verify_gateway_network.py app/build/outputs/apk/release/app-release.apk \
+            --aapt2 "$ANDROID_HOME/build-tools/36.0.0/aapt2"
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/PushGo-HMS-${RELEASE_VERSION}.apk"
           printf 'commit=%s\nversion=%s\ncertificate=%s\n' "$GITHUB_SHA" "$RELEASE_VERSION" "$signer" > dist/BUILD_INFO.txt
@@ -94,6 +96,8 @@ jobs:
           set -euo pipefail
           printf '%s\n' \
             '基于官方 PushGo Android 源码的 HMS 测试发行版。' \
+            '修复 v1.3.1 升级后打开频道报参数错误：HTTP 局域网网关地址保持有效，不会被替换为官方默认网关。' \
+            '发布版支持设置里的 HTTP/HTTPS 网关；错误地址和不支持 HMS 的网关有明确提示。' \
             '自动检查更新失败只提示一次，记录跨启动保留；更新检查、手动检查及有效新版通知继续工作。' \
             '加入 TaskNotes 去打卡按钮，业务 HTTPS 域名在设置中配置。' \
             '使用仓库所有者提供、已登记 HMS 的测试签名证书。真实手机按钮与更新流程仍需验收。' \

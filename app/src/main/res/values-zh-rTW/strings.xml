@@ -111,7 +111,8 @@
     <string name="message_channel_unsubscribed">頻道已取消訂閱</string>
     <string name="message_messages_cleared">訊息已清除</string>
     <string name="message_no_messages_to_clear">沒有可清除的訊息</string>
-    <string name="error_invalid_server_address">無效的伺服器位址 (需要 https)</string>
+    <string name="error_invalid_server_address">無效的伺服器位址 (請填寫完整的 http:// 或 https:// 位址)</string>
+    <string name="error_gateway_huawei_unsupported">此閘道不支援 HMS，請設定你部署的華為版 PushGo 閘道位址。</string>
     <string name="error_invalid_base64">無效的 Base64</string>
     <string name="error_invalid_hex">無效的 Hex</string>
     <string name="error_invalid_key_length">金鑰長度必須為 128/192/256 位。</string>

@@ -57,11 +57,19 @@ SDK configuration reference: https://developer.android.com/build
 
 The `hmsLan` build type uses the original Release source set and R8 settings,
 with the locally registered debug/test certificate. It sets the default gateway
-to `http://192.168.1.6:6666` and permits HTTP for that exact host in both the URL
-validator and Android network security configuration. Other hosts still require
-HTTPS. Debug and Release have an empty LAN exception and retain upstream policy.
-If the test PC address changes, update both the build-time host and XML whitelist.
+to `http://192.168.1.6:6666`. All build variants accept full HTTP and HTTPS gateway
+URLs, including custom hosts, ports and reverse-proxy path prefixes. When the PC
+address changes, update the gateway setting and Docker port binding. A saved
+gateway address is preserved on upgrade; an invalid saved address stops requests
+with an address error instead of silently registering with the default gateway.
+TaskNotes check-in pages and signed update downloads retain their HTTPS rules.
 Build with `:app:assembleHmsLan :app:testHmsLanUnitTest :app:lintHmsLan`.
+
+The v1.3.2 release fixes the v1.3.1 LAN upgrade regression: the Release variant
+previously rejected the saved HTTP address and sent HMS route registration to
+`https://gateway.pushgo.cn`, which does not accept the Huawei channel type. The
+Release APK now includes HTTP network permission as well as URL validation. An
+incompatible gateway reports a specific HMS configuration message.
 
 AGConnect reads its generated `agc_*` strings by resource name at runtime.
 `res/raw/hms_agc_keep.xml` preserves them in all resource-shrunk variants;
