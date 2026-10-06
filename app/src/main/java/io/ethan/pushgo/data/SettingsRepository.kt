@@ -6,6 +6,7 @@ import io.ethan.pushgo.data.db.AppSettingsDao
 import io.ethan.pushgo.data.db.AppSettingsEntity
 import io.ethan.pushgo.data.model.KeyEncoding
 import io.ethan.pushgo.data.model.MessageListSortMode
+import io.ethan.pushgo.update.UpdateCheckFailureNoticeGate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,17 @@ class SettingsRepository(
     private val secretStore: SecureSecretStore,
     private val settingsCache: SharedPreferences,
 ) {
+    private val updateFailureNoticeGate = UpdateCheckFailureNoticeGate(
+        lock = settingsCache,
+        hasNotified = { settingsCache.getBoolean("update_auto_failure_notified", false) },
+        markNotified = {
+            settingsCache.edit().putBoolean("update_auto_failure_notified", true).commit()
+        },
+    )
+
+    fun shouldNotifyUpdateCheckFailure(manual: Boolean): Boolean =
+        updateFailureNoticeGate.shouldNotify(manual)
+
     private val settingsFlow = appSettingsDao.observe()
     private val fcmTokenState = MutableStateFlow(secretStore.hmsToken())
 

@@ -13,6 +13,15 @@ Policy:
 ### Changed
 - Placeholder for next development cycle.
 
+## [hms-v1.3.1]
+
+### Improved
+- Added a "去打卡" notification action for TaskNotes links from the HTTPS service configured in settings.
+- Automatic update-check failures show one notice, persisted across reopening and process restarts. Update checks, explicit "Check now" feedback and valid update prompts remain available.
+
+### Distribution
+- Built from the official PushGo Android source with Huawei HMS support and the existing io.ethan.pushgo package identity. This HMS test APK uses the previously registered test certificate.
+
 ## [v1.3.0]
 
 ### Improved

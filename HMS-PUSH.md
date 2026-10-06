@@ -41,6 +41,10 @@ clear its data to work around this.
 - Update checks require an explicitly configured HMS signed feed via the existing
   `PUSHGO_UPDATE_FEED_URL` and verification-key settings. The default official FCM
   update feed is not used by this build.
+- Automatic update-check failures show one persisted notice per installation;
+  reopening the app, returning to the foreground, or restarting the process does
+  not show the same failure again. Checks and valid update notifications continue.
+  Explicit "Check now" requests still return their success/failure result.
 
 Deploy the compatible Huawei-enabled Gateway before installing this client.
 Register the original device key with `channel_type: "huawei"`; an old server will
