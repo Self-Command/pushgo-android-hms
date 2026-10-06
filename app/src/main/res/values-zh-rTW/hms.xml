@@ -1,0 +1,5 @@
+<resources>
+    <string name="label_transport_hms">華為 HMS</string>
+    <string name="error_hms_not_configured">目前 APK 未設定 HMS</string>
+    <string name="error_hms_unavailable">HMS Core 無法使用，請安裝或啟用 HMS Core</string>
+</resources>

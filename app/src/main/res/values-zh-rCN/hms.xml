@@ -1,0 +1,5 @@
+<resources>
+    <string name="label_transport_hms">华为 HMS</string>
+    <string name="error_hms_not_configured">当前 APK 未配置 HMS</string>
+    <string name="error_hms_unavailable">HMS Core 不可用，请安装或启用 HMS Core</string>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="label_transport_hms">Huawei HMS</string>
+    <string name="error_hms_not_configured">HMS is not configured in this APK</string>
+    <string name="error_hms_unavailable">HMS Core is unavailable; install or enable HMS Core</string>
+</resources>

@@ -24,7 +24,6 @@ class AppContainer(
 ) {
     val appContext = context.applicationContext
     val coroutineDispatchers = AppCoroutineDispatchers()
-    val pushTokenProvider: PushTokenProvider = FirebasePushTokenProvider()
     internal val database = PushGoDatabase.build(appContext)
     internal val secureSecretStore: SecureSecretStore = AndroidKeystoreSecretStore(appContext)
 
@@ -34,6 +33,7 @@ class AppContainer(
         secretStore = secureSecretStore,
         settingsCache = appContext.getSharedPreferences("pushgo_settings_cache", Context.MODE_PRIVATE),
     )
+    val pushTokenProvider = SelectedPushTokenProvider(settingsRepository, FirebasePushTokenProvider(), HuaweiPushTokenProvider(appContext))
     val inboundDeliveryLedgerRepository = InboundDeliveryLedgerRepository(
         database = database,
         inboundDeliveryLedgerDao = database.inboundDeliveryLedgerDao(),

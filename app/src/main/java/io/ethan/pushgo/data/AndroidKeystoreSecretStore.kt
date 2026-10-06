@@ -52,6 +52,9 @@ class AndroidKeystoreSecretStore(context: Context) : SecureSecretStore {
         putString(SECRET_FCM_TOKEN, token?.trim()?.ifEmpty { null })
     }
 
+    override fun hmsToken(): String? = getString("hms_push_token")?.trim()?.ifEmpty { null }
+    override fun setHmsToken(token: String?) { putString("hms_push_token", token) }
+
     override fun deviceKey(): String? {
         return getString(SECRET_DEVICE_KEY)?.trim()?.ifEmpty { null }
     }

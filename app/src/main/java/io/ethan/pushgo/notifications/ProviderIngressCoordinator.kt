@@ -252,10 +252,10 @@ object ProviderIngressCoordinator {
         channelRepository: ChannelSubscriptionRepository,
         settingsRepository: SettingsRepository,
     ) {
-        if (!settingsRepository.getUseFcmChannel()) {
+        if (!settingsRepository.getUseProviderChannel()) {
             return
         }
-        val token = settingsRepository.getFcmToken()
+        val token = settingsRepository.getProviderToken()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
             ?: return

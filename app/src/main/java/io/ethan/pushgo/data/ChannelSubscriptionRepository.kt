@@ -1,5 +1,7 @@
 package io.ethan.pushgo.data
 
+import kotlinx.coroutines.sync.withLock
+
 import androidx.room.withTransaction
 import io.ethan.pushgo.data.db.PushGoDatabase
 import io.ethan.pushgo.data.model.ChannelSubscription
@@ -349,7 +351,7 @@ class ChannelSubscriptionRepository(
     }
 
     suspend fun handleTokenUpdate(deviceToken: String) {
-        settingsRepository.setFcmToken(deviceToken.trim().ifEmpty { null })
+        settingsRepository.setActiveProviderToken(deviceToken.trim().ifEmpty { null })
     }
 
     suspend fun syncProviderDeviceToken(
@@ -450,7 +452,7 @@ class ChannelSubscriptionRepository(
         )
     }
 
-    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig): String {
+    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig): String = settingsRepository.pushChannelMutex.withLock {
         val normalizedToken = deviceToken.trim()
         if (normalizedToken.isEmpty()) {
             throw ChannelSubscriptionException.local(
@@ -459,17 +461,21 @@ class ChannelSubscriptionRepository(
                 category = GatewayErrorCategory.VALIDATION,
             )
         }
+        val selected = settingsRepository.getPushChannelType()
+        check(selected != PushChannelType.PRIVATE) { "Provider route requested in private mode" }
+        val otherToken = settingsRepository.getProviderToken(if (selected == PushChannelType.FCM) PushChannelType.HMS else PushChannelType.FCM)
+        check(otherToken == null || otherToken != normalizedToken) { "Inactive provider token rejected" }
         val deviceKey = ensureDeviceIdentity(config)
-        val previousToken = settingsRepository.getFcmToken()?.trim()?.ifEmpty { null }
+        val previousToken = settingsRepository.getProviderToken()?.trim()?.ifEmpty { null }
         if (previousToken != normalizedToken) {
-            settingsRepository.setFcmToken(normalizedToken)
+            settingsRepository.setActiveProviderToken(normalizedToken)
         }
         val upserted = service.upsertDeviceChannel(
             baseUrl = config.address,
             token = config.token,
             deviceKey = deviceKey,
             platform = "android",
-            channelType = FCM_CHANNEL_TYPE,
+            channelType = settingsRepository.getPushChannelType().wireName,
             providerToken = normalizedToken,
         )
         val resolvedDeviceKey = upserted.deviceKey.trim()
@@ -485,7 +491,7 @@ class ChannelSubscriptionRepository(
                 )
             }
         }
-        return resolvedDeviceKey
+        resolvedDeviceKey
     }
 
     private suspend fun ensureDeviceIdentity(config: ServerConfig): String {
@@ -515,7 +521,7 @@ class ChannelSubscriptionRepository(
         if (cached != null) {
             return cached
         }
-        val token = settingsRepository.getFcmToken()
+        val token = settingsRepository.getProviderToken()
             ?.trim()
             ?.ifEmpty { null }
             ?: fetchFcmTokenForIngress()
@@ -536,7 +542,7 @@ class ChannelSubscriptionRepository(
             ?.trim()
             ?.ifEmpty { null }
             ?.also { token ->
-                settingsRepository.setFcmToken(token)
+                settingsRepository.setActiveProviderToken(token)
             }
     }
 

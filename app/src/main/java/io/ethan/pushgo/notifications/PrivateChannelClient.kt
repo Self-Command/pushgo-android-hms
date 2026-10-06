@@ -702,7 +702,7 @@ class PrivateChannelClient(
             ensurePrivateRoute(baseUrl, token, state, force = true)
             val normalizedProviderToken = providerToken?.trim().orEmpty()
             if (
-                channelType.trim().equals("fcm", ignoreCase = true) &&
+                channelType.trim().lowercase() in setOf("fcm", "huawei") &&
                 normalizedProviderToken.isNotEmpty()
             ) {
                 privatePost(

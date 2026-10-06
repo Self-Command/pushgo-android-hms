@@ -20,6 +20,8 @@ class SettingsRepository(
     private val settingsCache: SharedPreferences,
 ) {
     private val settingsFlow = appSettingsDao.observe()
+    val pushChannelMutex = kotlinx.coroutines.sync.Mutex()
+    private val hmsTokenState = MutableStateFlow(secretStore.hmsToken())
     private val fcmTokenState = MutableStateFlow(secretStore.fcmToken())
 
     val serverAddressFlow: Flow<String?> = settingsFlow
@@ -41,6 +43,35 @@ class SettingsRepository(
         settingsFlow
             .map { it?.useFcmChannel ?: getCachedUseFcmChannel() }
             .distinctUntilChanged()
+    val pushChannelTypeFlow: Flow<PushChannelType> = settingsFlow
+        .map { PushChannelType.restore(it?.pushChannelType, it?.useFcmChannel ?: getCachedUseFcmChannel(), secretStore.hmsToken() != null) }
+        .distinctUntilChanged()
+    val providerTokenFlow: Flow<String?> = kotlinx.coroutines.flow.combine(pushChannelTypeFlow, fcmTokenState, hmsTokenState) { type, fcm, hms ->
+        when (type) { PushChannelType.FCM -> fcm; PushChannelType.HMS -> hms; PushChannelType.PRIVATE -> null }
+    }
+    val useProviderChannelFlow: Flow<Boolean> = pushChannelTypeFlow.map { it != PushChannelType.PRIVATE }.distinctUntilChanged()
+    fun getCachedPushChannelType(): PushChannelType = PushChannelType.restore(
+        settingsCache.getString("push_channel_type", null), getCachedUseFcmChannel(), secretStore.hmsToken() != null)
+    fun getCachedUseProviderChannel(): Boolean = getCachedPushChannelType() != PushChannelType.PRIVATE
+    suspend fun getPushChannelType(): PushChannelType = PushChannelType.restore(loadSettings().pushChannelType, getCachedUseFcmChannel(), secretStore.hmsToken() != null)
+    suspend fun setPushChannelType(type: PushChannelType) {
+        updateSettings { it.copy(pushChannelType = type.wireName, useFcmChannel = type == PushChannelType.FCM) }
+    }
+    suspend fun getUseProviderChannel(): Boolean = getPushChannelType() != PushChannelType.PRIVATE
+    suspend fun getHmsToken(): String? = secretStore.hmsToken()
+    suspend fun setHmsToken(token: String?) {
+        val normalized = token?.trim()?.ifEmpty { null }
+        secretStore.setHmsToken(normalized)
+        hmsTokenState.value = normalized
+    }
+    suspend fun getProviderToken(): String? = getProviderToken(getPushChannelType())
+    suspend fun getProviderToken(type: PushChannelType): String? = when(type) {
+        PushChannelType.FCM -> getFcmToken(); PushChannelType.HMS -> getHmsToken(); PushChannelType.PRIVATE -> null
+    }
+    suspend fun setProviderToken(type: PushChannelType, token: String?) {
+        when(type) { PushChannelType.FCM -> setFcmToken(token); PushChannelType.HMS -> setHmsToken(token); PushChannelType.PRIVATE -> Unit }
+    }
+    suspend fun setActiveProviderToken(token: String?) = setProviderToken(getPushChannelType(), token)
     val fcmTokenFlow: StateFlow<String?> = fcmTokenState.asStateFlow()
     val updateAutoCheckEnabledFlow: Flow<Boolean> =
         settingsFlow
@@ -143,7 +174,13 @@ class SettingsRepository(
     }
 
     private suspend fun loadSettings(): AppSettingsEntity {
-        return (appSettingsDao.get() ?: defaultSettings()).also {
+        val current = appSettingsDao.get() ?: defaultSettings()
+        val migrated = if (current.pushChannelType == null) {
+            current.copy(pushChannelType = PushChannelType.restore(null, current.useFcmChannel, secretStore.hmsToken() != null).wireName)
+                .also { appSettingsDao.upsert(it) }
+        } else current
+        return migrated.also {
+            settingsCache.edit { putString("push_channel_type", it.pushChannelType) }
             cacheUseFcmChannel(it.useFcmChannel)
             cachePageVisibility(it)
             cacheUpdatePreferences(it)
@@ -153,6 +190,7 @@ class SettingsRepository(
     private suspend fun updateSettings(update: (AppSettingsEntity) -> AppSettingsEntity) {
         val updated = update(loadSettings())
         appSettingsDao.upsert(updated)
+        settingsCache.edit { putString("push_channel_type", updated.pushChannelType) }
         cacheUseFcmChannel(updated.useFcmChannel)
         cachePageVisibility(updated)
         cacheUpdatePreferences(updated)
@@ -241,7 +279,7 @@ class SettingsRepository(
         updateSettings { it.copy(fcmToken = null) }
     }
 
-    suspend fun getUseFcmChannel(): Boolean = loadSettings().useFcmChannel
+    suspend fun getUseFcmChannel(): Boolean = getPushChannelType() == PushChannelType.FCM
 
     suspend fun getMessagePageEnabled(): Boolean = loadSettings().isMessagePageEnabled
 
@@ -250,7 +288,7 @@ class SettingsRepository(
     suspend fun getThingPageEnabled(): Boolean = loadSettings().isThingPageEnabled
 
     suspend fun setUseFcmChannel(enabled: Boolean) {
-        updateSettings { it.copy(useFcmChannel = enabled) }
+        setPushChannelType(if (enabled) PushChannelType.FCM else PushChannelType.PRIVATE)
     }
 
     suspend fun setMessagePageEnabled(enabled: Boolean) {

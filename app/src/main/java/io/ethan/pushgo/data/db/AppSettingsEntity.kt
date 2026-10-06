@@ -19,6 +19,8 @@ data class AppSettingsEntity(
     val fcmToken: String?,
     @ColumnInfo(name = "use_fcm_channel")
     val useFcmChannel: Boolean = true,
+    @ColumnInfo(name = "push_channel_type")
+    val pushChannelType: String? = null,
     @ColumnInfo(name = "is_message_page_enabled")
     val isMessagePageEnabled: Boolean = true,
     @ColumnInfo(name = "is_event_page_enabled")

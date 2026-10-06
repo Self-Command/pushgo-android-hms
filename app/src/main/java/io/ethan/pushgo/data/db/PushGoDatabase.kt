@@ -36,7 +36,7 @@ import java.io.File
         AppSettingsEntity::class,
         PendingLocalDeletionEntity::class,
     ],
-    version = 30,
+    version = 31,
     exportSchema = true,
 )
 abstract class PushGoDatabase : RoomDatabase() {
@@ -311,6 +311,12 @@ abstract class PushGoDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN push_channel_type TEXT")
+            }
+        }
+
         fun build(context: Context): PushGoDatabase {
             return runCatching {
                 newBuilder(
@@ -362,6 +368,7 @@ abstract class PushGoDatabase : RoomDatabase() {
                     MIGRATION_27_28,
                     MIGRATION_28_29,
                     MIGRATION_29_30,
+                    MIGRATION_30_31,
                 )
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .addCallback(object : RoomDatabase.Callback() {
