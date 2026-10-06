@@ -383,6 +383,14 @@ class ChannelSubscriptionRepository(
                 baseUrl = previousBaseUrl,
                 token = previousToken,
                 deviceKey = deviceKey,
+                channelType = PushChannelType.HMS.wireName,
+            )
+        }
+        runCatching {
+            service.deleteDeviceChannel(
+                baseUrl = previousBaseUrl,
+                token = previousToken,
+                deviceKey = deviceKey,
                 channelType = FCM_CHANNEL_TYPE,
             )
         }

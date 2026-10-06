@@ -1,8 +1,12 @@
 name: Additive push verification
 on:
   push:
-    branches: [repair/hms-additive]
+    branches: [main, repair/hms-additive]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Optional increasing vX.Y.Z for a public candidate release
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -14,6 +18,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Require a generic source tree
+        run: test ! -f app/agconnect-services.json
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -46,3 +52,182 @@ jobs:
             app/build/reports/
             app/build/outputs/apk/
             app/schemas/
+  migration:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install original JNI toolchains
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
+          ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt
+          rustup target add --toolchain 1.97.1 aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          cargo +1.97.1 install cargo-ndk --version 4.1.2 --locked
+          chmod +x gradlew native/quinn-jni/build-android.sh scripts/verify_jni_contract.sh
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/quinn-jni
+      - name: Enable KVM for isolated emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-migration-evidence
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            app/schemas/
+  release:
+    needs: [verify, migration]
+    if: github.ref_name == 'main' || inputs.version != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      PUSHGO_DISTRIBUTION: public
+      PUSHGO_RELEASE_STORE_PASSWORD: ${{ secrets.PUSHGO_RELEASE_STORE_PASSWORD }}
+      PUSHGO_RELEASE_KEY_ALIAS: ${{ secrets.PUSHGO_RELEASE_KEY_ALIAS }}
+      PUSHGO_RELEASE_KEY_PASSWORD: ${{ secrets.PUSHGO_RELEASE_KEY_PASSWORD }}
+      PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64: ${{ vars.PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version and public update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .ci
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[] | .tag_name' > .ci/tags
+          python3 - <<'PY'
+          import os, re
+          versions = []
+          for tag in open('.ci/tags'):
+              m = re.fullmatch(r'(?:hms-|pushgo-)?v(\d+)\.(\d+)\.(\d+)\s*', tag)
+              if m: versions.append(tuple(map(int,m.groups())))
+          latest = max(versions, default=(1,3,3))
+          requested = os.environ.get('RELEASE_VERSION','')
+          if requested:
+              m = re.fullmatch(r'v(\d+)\.(\d+)\.(\d+)',requested)
+              assert m and tuple(map(int,m.groups())) > latest, 'Version must increase'
+              version = requested
+          else:
+              major, minor, patch = latest
+              patch += 1
+              if patch > 99: minor,patch = minor+1,0
+              if minor > 99: major,minor = major+1,0
+              version = f'v{major}.{minor}.{patch}'
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('RELEASE_VERSION='+version+'\n')
+              f.write('PUSHGO_UPDATE_FEED_URL=https://raw.githubusercontent.com/'+os.environ['GITHUB_REPOSITORY']+'/updates/public-update-feed-v1.json\n')
+          PY
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install original JNI toolchains
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
+          ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt
+          rustup target add --toolchain 1.97.1 aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          cargo +1.97.1 install cargo-ndk --version 4.1.2 --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/quinn-jni
+      - name: Restore signer without Huawei configuration
+        env:
+          PUSHGO_RELEASE_KEYSTORE_B64: ${{ secrets.PUSHGO_RELEASE_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test ! -f app/agconnect-services.json
+          umask 077
+          printf '%s' "$PUSHGO_RELEASE_KEYSTORE_B64" | base64 --decode > .ci/release.keystore
+          echo "PUSHGO_RELEASE_STORE_FILE=$GITHUB_WORKSPACE/.ci/release.keystore" >> "$GITHUB_ENV"
+      - name: Release lint JNI contract and universal APK
+        run: |
+          chmod +x gradlew native/quinn-jni/build-android.sh scripts/verify_jni_contract.sh
+          ./gradlew --no-daemon --max-workers=2 -Ppushgo.enableAbiSplits=false "-Ppushgo.versionName=$RELEASE_VERSION" \
+            :app:lintRelease :app:verifyRustJniContract :app:assembleRelease
+      - name: Verify and package public APK
+        env:
+          EXPECTED_CERTIFICATE: ${{ vars.HMS_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          signer="$($ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs "$apk" | sed -n 's/Signer #1 certificate SHA-256 digest: //p')"
+          test -n "$EXPECTED_CERTIFICATE"
+          test "${signer,,}" = "${EXPECTED_CERTIFICATE,,}"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" > .ci/package.txt
+          grep -q "package: name='io.ethan.pushgo'" .ci/package.txt
+          grep -q "versionName='$RELEASE_VERSION'" .ci/package.txt
+          for abi in arm64-v8a armeabi-v7a x86_64; do unzip -l "$apk" | grep "lib/$abi/.*\.so"; done
+          test "$(stat -c %s "$apk")" -le 104857600
+          mkdir -p dist
+          cp "$apk" "dist/PushGo-$RELEASE_VERSION.apk"
+          printf 'source_sha=%s\nversion=%s\ncertificate=%s\ndistribution=public\nhms_configured=false\n' "$GITHUB_SHA" "$RELEASE_VERSION" "$signer" > dist/BUILD_INFO.txt
+          (cd dist && sha256sum ./* > SHA256SUMS.txt)
+      - name: Publish generic release and signed metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUSHGO_UPDATE_FEED_SIGNING_KEY_PEM: ${{ secrets.PUSHGO_UPDATE_FEED_SIGNING_KEY_PEM }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' '保留官方 FCM、私有连接、Rust JNI、原页面和消息/事件/事物；HMS 是第三个可选通道。' \
+            '此公开 APK 未注入个人华为配置，HMS 显示未配置。需要 HMS 可 Fork 并配置自己的 Secrets 构建。' \
+            '移除 TaskNotes 专用地址与按钮，保留普通消息链接。支持 HTTP 网关，自动更新失败只提示一次。' \
+            "Source SHA: $GITHUB_SHA" > .ci/notes.md
+          gh release create "pushgo-$RELEASE_VERSION" dist/* --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "PushGo $RELEASE_VERSION (generic)" --notes-file .ci/notes.md --latest
+          export SOURCE_SHA="$GITHUB_SHA"
+          export UPDATE_APK_FILE="dist/PushGo-$RELEASE_VERSION.apk"
+          export UPDATE_RELEASE_URL="https://github.com/$GITHUB_REPOSITORY/releases/tag/pushgo-$RELEASE_VERSION"
+          export UPDATE_DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/pushgo-$RELEASE_VERSION/PushGo-$RELEASE_VERSION.apk"
+          export UPDATE_METADATA_FILE=.ci/public-update-feed-v1.json
+          python3 scripts/publish_update_metadata.py
+          git fetch origin updates
+          git worktree add .ci/metadata FETCH_HEAD
+          cp .ci/public-update-feed-v1.json .ci/metadata/
+          git -C .ci/metadata config user.name github-actions
+          git -C .ci/metadata config user.email github-actions@users.noreply.github.com
+          git -C .ci/metadata add public-update-feed-v1.json
+          git -C .ci/metadata commit -m "updates: public $RELEASE_VERSION from $GITHUB_SHA"
+          git -C .ci/metadata push origin HEAD:updates
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-release-verification
+          path: |
+            app/build/reports/
+            app/schemas/
+            dist/
+      - name: Remove signer
+        if: always()
+        run: rm -f .ci/release.keystore .ci/update-key.pem
