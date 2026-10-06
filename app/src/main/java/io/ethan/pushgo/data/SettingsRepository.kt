@@ -421,8 +421,12 @@ class SettingsRepository(
         val defaults = defaultSettings().copy(
             serverAddress = normalizedAddress,
             useFcmChannel = false,
+            pushChannelType = PushChannelType.PRIVATE.wireName,
         )
         appSettingsDao.upsert(defaults)
+        settingsCache.edit { putString("push_channel_type", defaults.pushChannelType) }
+        fcmTokenState.value = null
+        hmsTokenState.value = null
         cacheUseFcmChannel(defaults.useFcmChannel)
         cachePageVisibility(defaults)
         cacheUpdatePreferences(defaults)

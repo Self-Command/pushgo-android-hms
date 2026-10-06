@@ -412,22 +412,6 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         processPushTokenUpdate(container, normalized, triggerPull = true)
     }
 
-    private fun handleSelectedTokenUpdate(deviceToken: String) {
-        val container = containerOrNull()
-        if (container == null) {
-            io.ethan.pushgo.util.SilentSink.w(TAG, "handlePushTokenUpdate ignored: storage unavailable")
-            return
-        }
-        appScope.launch {
-            val normalizedToken = deviceToken.trim().ifEmpty { return@launch }
-            processPushTokenUpdate(
-                container = container,
-                normalizedToken = normalizedToken,
-                triggerPull = true,
-            )
-        }
-    }
-
     private suspend fun syncSubscriptionsOnLaunch() {
         val container = containerOrNull() ?: return
         val useFcmChannel = runCatching { container.settingsRepository.getUseProviderChannel() }

@@ -219,7 +219,12 @@ jobs:
           git -C .ci/metadata config user.email github-actions@users.noreply.github.com
           git -C .ci/metadata add public-update-feed-v1.json
           git -C .ci/metadata commit -m "updates: public $RELEASE_VERSION from $GITHUB_SHA"
-          git -C .ci/metadata push origin HEAD:updates
+          for attempt in 1 2 3; do
+            if git -C .ci/metadata push origin HEAD:updates; then break; fi
+            test "$attempt" -lt 3
+            git -C .ci/metadata fetch origin updates
+            git -C .ci/metadata rebase FETCH_HEAD
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

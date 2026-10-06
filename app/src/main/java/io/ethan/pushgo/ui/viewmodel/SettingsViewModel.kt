@@ -434,22 +434,31 @@ class SettingsViewModel(
 
     fun ensurePrivateTransportWhenFcmUnsupported(context: Context) {
         viewModelScope.launch {
-            val supported = isFcmSupported(context)
-            isFcmSupported = supported
-            if (pushChannelType != PushChannelType.FCM || supported || !useFcmChannel) {
-                return@launch
+            try {
+                settingsRepository.pushChannelMutex.withLock {
+                    val supported = isFcmSupported(context)
+                    isFcmSupported = supported
+                    if (settingsRepository.getPushChannelType() != PushChannelType.FCM || supported) {
+                        return@withLock
+                    }
+                    val privateEnabled = gatewayPrivateChannelEnabledFetcher()
+                    gatewayPrivateChannelEnabled = privateEnabled
+                    if (privateEnabled == false) {
+                        errorMessage = ResMessage(R.string.error_private_disabled_and_fcm_unavailable)
+                        return@withLock
+                    }
+                    privateChannelClient.switchToPrivateAndRetireProvider(
+                        PushChannelType.FCM.wireName, settingsRepository.getFcmToken())
+                    settingsRepository.setPushChannelType(PushChannelType.PRIVATE)
+                    pushChannelType = PushChannelType.PRIVATE
+                    useFcmChannel = false
+                    privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
+                    PrivateChannelServiceManager.refreshForMode(context, false)
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                errorMessage = TextMessage(error.message ?: "Unable to select private transport")
             }
-            val privateEnabled = gatewayPrivateChannelEnabledFetcher()
-            gatewayPrivateChannelEnabled = privateEnabled
-            if (privateEnabled == false) {
-                errorMessage = ResMessage(R.string.error_private_disabled_and_fcm_unavailable)
-                return@launch
-            }
-            settingsRepository.setUseFcmChannel(false)
-            settingsRepository.setFcmToken(null)
-            useFcmChannel = false
-            privateChannelClient.setRuntime(fcmAvailable = false, systemToken = null)
-            PrivateChannelServiceManager.refreshForMode(context, false)
         }
     }
 
@@ -501,7 +510,15 @@ class SettingsViewModel(
             catch (error: Exception) {
                 errorMessage = TextMessage(error.message ?: "Unable to switch push channel")
                 // A request with an uncertain outcome is reconciled to the retained selection.
-                settingsRepository.getProviderToken()?.let { token -> runCatching { channelRepository.syncProviderDeviceToken(token) } }
+                if (settingsRepository.getPushChannelType() == PushChannelType.PRIVATE) {
+                    settingsRepository.pushChannelMutex.withLock {
+                        if (settingsRepository.getPushChannelType() == PushChannelType.PRIVATE) {
+                            runCatching { privateChannelClient.switchToPrivateAndRetireProvider("private", null) }
+                        }
+                    }
+                } else {
+                    settingsRepository.getProviderToken()?.let { token -> runCatching { channelRepository.syncProviderDeviceToken(token) } }
+                }
             }
         }
     }

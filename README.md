@@ -27,3 +27,7 @@ PushGo Android 是 PushGo 的官方客户端应用，可配合 PushGo Gateway �
 ## 环境要求
 
 - Android 9+（minSdk 28）
+
+## Optional Huawei HMS extension
+
+This branch retains the official FCM and private transports and adds an optional HMS provider. See [HMS-PUSH.md](HMS-PUSH.md) for client configuration, independent token storage, migration and Action build instructions.

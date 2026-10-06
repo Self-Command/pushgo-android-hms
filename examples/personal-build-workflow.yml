@@ -1,0 +1,142 @@
+# Copy this example into a PRIVATE build repository. Configure your OWN SDK/signing Secrets.
+name: Configured HMS APK (private example)
+on:
+  workflow_dispatch:
+    inputs:
+      source_repository:
+        description: Public source repository containing the reviewed HMS extension
+        required: true
+        default: OWNER/pushgo-android-hms
+      source_sha:
+        description: Full reviewed SHA in the configured source repository
+        required: true
+      version:
+        description: Increasing version, for example v1.3.4
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: personal-apk
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      PUSHGO_RELEASE_STORE_PASSWORD: ${{ secrets.PUSHGO_RELEASE_STORE_PASSWORD }}
+      PUSHGO_RELEASE_KEY_ALIAS: ${{ secrets.PUSHGO_RELEASE_KEY_ALIAS }}
+      PUSHGO_RELEASE_KEY_PASSWORD: ${{ secrets.PUSHGO_RELEASE_KEY_PASSWORD }}
+      PUSHGO_DISTRIBUTION: personal
+      PUSHGO_UPDATE_FEED_URL: ${{ vars.PUSHGO_UPDATE_FEED_URL }}
+      PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64: ${{ vars.PUSHGO_UPDATE_FEED_ECDSA_P256_PUBLIC_KEY_B64 }}
+    steps:
+      - name: Validate immutable source and private destination
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.source_repository }}
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+      - run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install original JNI toolchains
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;36.0.0" "ndk;29.0.14206865"
+          ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt
+          rustup target add --toolchain 1.97.1 aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          cargo +1.97.1 install cargo-ndk --version 4.1.2 --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native/quinn-jni
+      - name: Restore validated client configuration and signing key
+        env:
+          HMS_AGCONNECT_JSON_B64: ${{ secrets.HMS_AGCONNECT_JSON_B64 }}
+          PUSHGO_RELEASE_KEYSTORE_B64: ${{ secrets.PUSHGO_RELEASE_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p .ci
+          printf '%s' "$HMS_AGCONNECT_JSON_B64" | base64 --decode > app/agconnect-services.json
+          printf '%s' "$PUSHGO_RELEASE_KEYSTORE_B64" | base64 --decode > .ci/release.keystore
+          echo "PUSHGO_RELEASE_STORE_FILE=$GITHUB_WORKSPACE/.ci/release.keystore" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import json
+          data = json.load(open('app/agconnect-services.json', encoding='utf-8'))
+          assert data['client']['package_name'] == 'io.ethan.pushgo'
+          assert data['client']['app_id']
+          def validate(value):
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      assert key.lower() not in {'client_secret', 'app_secret', 'private_key', 'password'}, 'Sending or signing secret in SDK config'
+                      validate(child)
+              elif isinstance(value, list):
+                  for child in value: validate(child)
+          validate(data)
+          PY
+      - name: Test, lint and build release with original JNI
+        run: |
+          chmod +x gradlew native/quinn-jni/build-android.sh scripts/verify_jni_contract.sh
+          ./gradlew --no-daemon --max-workers=2 -Ppushgo.enableAbiSplits=false \
+            "-Ppushgo.versionName=$RELEASE_VERSION" \
+            :app:testDebugUnitTest :app:lintRelease :app:verifyRustJniContract :app:assembleRelease
+      - name: Verify signer, package and version
+        env:
+          EXPECTED_CERTIFICATE: ${{ vars.HMS_RELEASE_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          apk=app/build/outputs/apk/release/app-release.apk
+          signer="$($ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs "$apk" | sed -n 's/Signer #1 certificate SHA-256 digest: //p')"
+          test -n "$EXPECTED_CERTIFICATE"
+          test "${signer,,}" = "${EXPECTED_CERTIFICATE,,}"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$apk" > .ci/package.txt
+          grep -q "package: name='io.ethan.pushgo'" .ci/package.txt
+          grep -q "versionName='$RELEASE_VERSION'" .ci/package.txt
+          unzip -l "$apk" | grep 'lib/arm64-v8a/.*\.so'
+          unzip -l "$apk" | grep 'lib/armeabi-v7a/.*\.so'
+          unzip -l "$apk" | grep 'lib/x86_64/.*\.so'
+          mkdir -p dist
+          cp "$apk" "dist/PushGo-Personal-HMS-$RELEASE_VERSION.apk"
+          printf 'source_repository=the configured source repository\nsource_sha=%s\nversion=%s\ncertificate=%s\ndistribution=private-personal\n' "$SOURCE_SHA" "$RELEASE_VERSION" "$signer" > dist/BUILD_INFO.txt
+          (cd dist && sha256sum ./* > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: personal-verification
+          path: |
+            app/build/reports/
+            app/schemas/
+            dist/
+      - name: Publish private release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' '个人 HMS APK，仅供仓库所有者使用。来自公共固定源码，保留官方 FCM、私有连接、JNI 和原功能，HMS 为可选第三通道。' \
+            '移除 TaskNotes 专用地址与按钮；普通消息链接继续使用。沿用现有签名，可覆盖旧个人版；实际升级、前后台接收由真机验收。' \
+            "源码 SHA: $SOURCE_SHA" "版本: $RELEASE_VERSION" > .ci/notes.md
+          if gh release view "personal-$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release already exists; preserving its assets.'
+            exit 1
+          fi
+          gh release create "personal-$RELEASE_VERSION" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "PushGo Personal HMS $RELEASE_VERSION" --notes-file .ci/notes.md --latest
+      - name: Remove injected files
+        if: always()
+        run: rm -f app/agconnect-services.json .ci/release.keystore .ci/metadata-deploy-key .ci/update-key.pem
