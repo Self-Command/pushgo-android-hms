@@ -41,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.withLock
 import okio.Path.Companion.toOkioPath
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -322,16 +323,18 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 )
             }
         }
-        if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return true
-        if (effectiveFcmMode && triggerPull) {
-            scheduleProviderIngressSync(reason = "token_update")
+        return container.settingsRepository.pushChannelMutex.withLock {
+            if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return@withLock true
+            if (effectiveFcmMode && triggerPull) {
+                scheduleProviderIngressSync(reason = "token_update")
+            }
+            container.privateChannelClient.setRuntime(
+                fcmAvailable = effectiveFcmMode,
+                systemToken = if (effectiveFcmMode) normalizedToken else null,
+            )
+            PrivateChannelServiceManager.refreshForMode(this@PushGoApp, effectiveFcmMode)
+            synchronized
         }
-        container.privateChannelClient.setRuntime(
-            fcmAvailable = effectiveFcmMode,
-            systemToken = if (effectiveFcmMode) normalizedToken else null,
-        )
-        PrivateChannelServiceManager.refreshForMode(this@PushGoApp, effectiveFcmMode)
-        return synchronized
     }
 
     private suspend fun applyAutomationGatewayOverrideIfNeeded(container: AppContainer) {
