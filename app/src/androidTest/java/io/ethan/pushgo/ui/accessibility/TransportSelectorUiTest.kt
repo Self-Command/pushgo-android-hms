@@ -37,7 +37,7 @@ class TransportSelectorUiTest {
                 }
             }
         }
-        val row = composeRule.onNodeWithTag("segmented.settings.notification_transport").fetchSemanticsNode().boundsInRoot
+        val row = composeRule.onNodeWithTag("segmented.settings.notification_transport", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
         val buttons = listOf("fcm", "private", "hms").map {
             composeRule.onNodeWithTag("option.settings.notification_transport.$it").fetchSemanticsNode().boundsInRoot
         }
