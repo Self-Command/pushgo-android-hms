@@ -53,6 +53,17 @@ NORMAL data messages and does not replace business-protocol UAT of this app.
 
 SDK configuration reference: https://developer.android.com/build
 
+## Automatic GitHub downloads
+
+Every push to `main` runs the HMS release workflow. Passing builds publish a
+GitHub Release with the APK, checksums and exact source/signing identity. The
+Android version increments from the highest published HMS version; retrying a
+released commit preserves its existing version and assets. Manual dispatch can
+use an optional explicit newer version. Builds never overwrite a published APK.
+The current APK is always downloadable from `releases/latest/download/PushGo-HMS.apk`.
+Signing and AGC configuration remain in Actions Secrets. Automatic releases are
+authorized by the repository owner's request on 2026-10-06.
+
 ## LAN testing
 
 The `hmsLan` build type uses the original Release source set and R8 settings,

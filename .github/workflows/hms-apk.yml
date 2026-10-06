@@ -1,12 +1,14 @@
 name: HMS APK release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       version:
-        description: "Android version, for example v1.3.2"
-        required: true
-        default: v1.3.2
+        description: "Optional version vX.Y.Z; leave blank to increment the latest release"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -31,8 +33,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Validate release identity
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          mkdir -p .ci
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+            --jq '.[] | {tag_name,target_commitish}' > .ci/releases.jsonl
+          RELEASE_VERSION="$(python3 scripts/next_hms_version.py .ci/releases.jsonl \
+            --commit "$GITHUB_SHA" --requested "$RELEASE_VERSION")"
           [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          echo "RELEASE_VERSION=$RELEASE_VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=hms-${RELEASE_VERSION}" >> "$GITHUB_ENV"
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
@@ -82,6 +93,7 @@ jobs:
             --aapt2 "$ANDROID_HOME/build-tools/36.0.0/aapt2"
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/PushGo-HMS-${RELEASE_VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk dist/PushGo-HMS.apk
           printf 'commit=%s\nversion=%s\ncertificate=%s\n' "$GITHUB_SHA" "$RELEASE_VERSION" "$signer" > dist/BUILD_INFO.txt
           (cd dist && sha256sum ./* > SHA256SUMS.txt)
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -102,6 +114,12 @@ jobs:
             '加入 TaskNotes 去打卡按钮，业务 HTTPS 域名在设置中配置。' \
             '使用仓库所有者提供、已登记 HMS 的测试签名证书。真实手机按钮与更新流程仍需验收。' \
             'APK、校验值及精确源码提交见本 Release 附件。' > release-notes.md
-          gh release create "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" --title "PushGo HMS $RELEASE_VERSION" \
-            --notes-file release-notes.md --prerelease
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json targetCommitish --jq .targetCommitish > .ci/existing-release; then
+            test "$(cat .ci/existing-release)" = "$GITHUB_SHA"
+            echo 'This commit is already released; existing assets are preserved.'
+          else
+            gh release create "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "PushGo HMS $RELEASE_VERSION" \
+              --notes-file release-notes.md --latest
+          fi
