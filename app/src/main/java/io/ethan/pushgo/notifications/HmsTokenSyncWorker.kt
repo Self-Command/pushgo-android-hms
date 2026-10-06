@@ -15,7 +15,7 @@ class HmsTokenSyncWorker(context: Context, params: WorkerParameters) : Coroutine
         if (!HmsSupport.isConfigured() || container.settingsRepository.getPushChannelType() != PushChannelType.HMS) return Result.success()
         val token = container.settingsRepository.getHmsToken() ?: return Result.retry()
         return try {
-            if (app.syncProviderToken(PushChannelType.HMS, token)) Result.success() else Result.retry()
+            if (app.syncProviderToken(PushChannelType.HMS, token, persistToken = false)) Result.success() else Result.retry()
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (_: Exception) { Result.retry() }
     }

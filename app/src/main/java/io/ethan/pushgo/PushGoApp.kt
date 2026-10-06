@@ -412,10 +412,13 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         appScope.launch { syncProviderToken(type, deviceToken) }
     }
 
-    suspend fun syncProviderToken(type: PushChannelType, deviceToken: String): Boolean {
+    suspend fun syncProviderToken(type: PushChannelType, deviceToken: String, persistToken: Boolean = true): Boolean {
         val container = containerOrNull() ?: return false
         val normalized = deviceToken.trim().ifEmpty { return true }
-        container.settingsRepository.setProviderToken(type, normalized)
+        // A persistent worker reads a snapshot; it must never overwrite a newer
+        // SDK callback with that snapshot while waiting for gateway access.
+        if (persistToken) container.settingsRepository.setProviderToken(type, normalized)
+        else if (container.settingsRepository.getProviderToken(type) != normalized) return true
         if (container.settingsRepository.getPushChannelType() != type) return true
         if (type == PushChannelType.HMS && !HmsSupport.isConfigured()) return true
         return processPushTokenUpdate(container, normalized, triggerPull = true, provider = type)
