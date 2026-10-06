@@ -1,6 +1,8 @@
 package io.ethan.pushgo.data.db
 
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.SharedPreferences
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -18,7 +20,13 @@ import org.junit.runner.RunWith
 class PushChannelMigrationDeviceTest {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val name = "push-channel-migration-test.db"
-    private val secrets get() = AndroidKeystoreSecretStore(context)
+    // Exercise the real encrypted store without sharing preferences with the
+    // running application's Firebase callbacks during instrumentation.
+    private val secrets get() = AndroidKeystoreSecretStore(object : ContextWrapper(context) {
+        override fun getApplicationContext(): Context = this
+        override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+            super.getSharedPreferences("push-channel-migration-$name", mode)
+    })
     private val cache get() = context.getSharedPreferences("push-channel-migration-test", Context.MODE_PRIVATE)
 
     @Before fun prepare() { context.deleteDatabase(name); secrets.clearAll(); cache.edit().clear().commit() }
