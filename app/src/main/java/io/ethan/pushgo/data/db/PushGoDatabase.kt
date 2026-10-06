@@ -314,8 +314,9 @@ abstract class PushGoDatabase : RoomDatabase() {
         private val MIGRATION_30_31 = object : Migration(30, 31) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE app_settings ADD COLUMN push_channel_type TEXT")
-                // Room treats expression indexes as incomplete column indexes during validation.
-                // The original onOpen callback recreates these performance indexes afterwards.
+                // Runtime performance indexes are outside Room's declared schema.
+                // The original onOpen callback recreates them after schema validation.
+                db.execSQL("DROP INDEX IF EXISTS index_messages_read_received_id")
                 db.execSQL("DROP INDEX IF EXISTS index_messages_channel_key_read_received_id")
                 db.execSQL("DROP INDEX IF EXISTS index_messages_channel_key_received_id")
             }

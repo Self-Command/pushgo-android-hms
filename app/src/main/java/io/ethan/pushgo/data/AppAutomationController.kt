@@ -127,12 +127,14 @@ class AppAutomationController(
             privateChannelClient.onGatewayConfigChanged()
         }
 
-        val useFcmChannel = settingsRepository.getUseFcmChannel()
-        if (useFcmChannel) {
-            val activeFcmToken = settingsRepository.getFcmToken()?.trim()?.ifEmpty { null }
+        val selected = settingsRepository.getPushChannelType()
+        if (selected != PushChannelType.PRIVATE) {
+            val activeFcmToken = settingsRepository.getProviderToken(selected)?.trim()?.ifEmpty { null }
             if (activeFcmToken != null) {
-                channelRepository.syncProviderDeviceToken(activeFcmToken)
-                channelRepository.syncSubscriptionsIfNeeded(activeFcmToken)
+                if (selected != PushChannelType.HMS || io.ethan.pushgo.util.HmsSupport.isConfigured()) {
+                    channelRepository.syncProviderDeviceToken(activeFcmToken, expectedProvider = selected)
+                    channelRepository.syncSubscriptionsIfNeeded(activeFcmToken)
+                }
             }
             privateChannelClient.setRuntime(
                 fcmAvailable = true,
@@ -377,7 +379,7 @@ class AppAutomationController(
             gatewayBaseUrl = gatewayBaseUrl,
             gatewayTokenPresent = gatewayTokenPresent,
             useFcmChannel = useFcmChannel,
-            providerMode = if (useFcmChannel) "fcm" else "none",
+            providerMode = settingsRepository.getPushChannelType().let { if (it == PushChannelType.PRIVATE) "none" else it.wireName },
             deviceKeyPresent = deviceKeyPresent,
             privateRoute = privateStatus.route,
             privateTransport = privateStatus.transport,
