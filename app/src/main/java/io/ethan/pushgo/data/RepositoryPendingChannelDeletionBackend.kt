@@ -58,9 +58,9 @@ class RepositoryPendingChannelDeletionBackend(
     }
 
     override fun currentlyUsesProvider(): Boolean =
-        settingsRepository.getCachedUseFcmChannel() && FcmSupport.isAvailable(appContext)
+        settingsRepository.getCachedUseProviderChannel() && (settingsRepository.getCachedPushChannelType() == io.ethan.pushgo.data.PushChannelType.HMS || FcmSupport.isAvailable(appContext))
 
-    override suspend fun existingProviderToken(): String? = settingsRepository.getFcmToken()
+    override suspend fun existingProviderToken(): String? = settingsRepository.getProviderToken()
 
     override suspend fun syncProviderToken(token: String, operation: PendingLocalDeletionOperation) {
         channelRepository.syncProviderDeviceToken(token, operation.expectedGatewayUrl)

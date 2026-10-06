@@ -13,6 +13,9 @@ import coil3.gif.GifDecoder
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.google.firebase.messaging.FirebaseMessaging
+import io.ethan.pushgo.data.PushChannelType
+import io.ethan.pushgo.util.HmsSupport
+import io.ethan.pushgo.notifications.HmsTokenSyncWorker
 import io.ethan.pushgo.data.AppContainer
 import io.ethan.pushgo.automation.PushGoAutomation
 import io.ethan.pushgo.data.ImageCacheCleanupScheduler
@@ -38,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.withLock
 import okio.Path.Companion.toOkioPath
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -144,7 +148,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             return
         }
         container.pendingLocalDeletionCoordinator.start()
-        cachedUseFcmChannel = container.settingsRepository.getCachedUseFcmChannel()
+        cachedUseFcmChannel = container.settingsRepository.getCachedUseProviderChannel()
         appScope.launch {
             runCatching {
                 container.messageRepository.backfillTagMetadataIndexIfNeeded(this@PushGoApp)
@@ -157,7 +161,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             }
         }
         appScope.launch {
-            container.settingsRepository.useFcmChannelFlow.collect { useFcmChannel ->
+            container.settingsRepository.useProviderChannelFlow.collect { useFcmChannel ->
                 cachedUseFcmChannel = useFcmChannel
                 PrivateChannelServiceManager.refreshForMode(
                     this@PushGoApp,
@@ -289,15 +293,19 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         container: AppContainer,
         normalizedToken: String,
         triggerPull: Boolean,
-    ) {
-        val useFcmChannel = runCatching { container.settingsRepository.getUseFcmChannel() }
+        provider: PushChannelType,
+    ): Boolean {
+        if (container.settingsRepository.getPushChannelType() != provider) return true
+        var synchronized = true
+        val useFcmChannel = runCatching { container.settingsRepository.getUseProviderChannel() }
             .getOrDefault(true)
         cachedUseFcmChannel = useFcmChannel
         val effectiveFcmMode = effectiveFcmModeForSelection(useFcmChannel)
-        if (effectiveFcmMode) {
+        if (effectiveFcmMode && (container.settingsRepository.getPushChannelType() != PushChannelType.HMS || HmsSupport.isConfigured())) {
             runCatching {
-                container.channelRepository.syncProviderDeviceToken(normalizedToken)
+                container.channelRepository.syncProviderDeviceToken(normalizedToken, expectedProvider = provider)
             }.onFailure { error ->
+                synchronized = false
                 PushGoAutomation.recordRuntimeError(
                     source = "provider.sync_device_token",
                     error = error,
@@ -307,23 +315,26 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             runCatching {
                 container.channelRepository.syncSubscriptionsIfNeeded(normalizedToken)
             }.onFailure { error ->
+                synchronized = false
                 PushGoAutomation.recordRuntimeError(
                     source = "channel.sync.after_token_update",
                     error = error,
                     category = "subscription",
                 )
             }
-        } else {
-            runCatching { container.handlePushTokenUpdate(normalizedToken) }
         }
-        if (effectiveFcmMode && triggerPull) {
-            scheduleProviderIngressSync(reason = "token_update")
+        return container.settingsRepository.pushChannelMutex.withLock {
+            if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return@withLock true
+            if (effectiveFcmMode && triggerPull) {
+                scheduleProviderIngressSync(reason = "token_update")
+            }
+            container.privateChannelClient.setRuntime(
+                fcmAvailable = effectiveFcmMode,
+                systemToken = if (effectiveFcmMode) normalizedToken else null,
+            )
+            PrivateChannelServiceManager.refreshForMode(this@PushGoApp, effectiveFcmMode)
+            synchronized
         }
-        container.privateChannelClient.setRuntime(
-            fcmAvailable = effectiveFcmMode,
-            systemToken = if (effectiveFcmMode) normalizedToken else null,
-        )
-        PrivateChannelServiceManager.refreshForMode(this@PushGoApp, effectiveFcmMode)
     }
 
     private suspend fun applyAutomationGatewayOverrideIfNeeded(container: AppContainer) {
@@ -355,13 +366,13 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         val container = containerOrNull() ?: return
         appScope.launch {
             val useFcmChannel = runCatching {
-                container.settingsRepository.getUseFcmChannel()
+                container.settingsRepository.getUseProviderChannel()
             }.getOrDefault(true)
             cachedUseFcmChannel = useFcmChannel
             val effectiveFcmMode = effectiveFcmModeForSelection(useFcmChannel)
             val cachedToken = if (effectiveFcmMode) {
                 runCatching {
-                    container.settingsRepository.getFcmToken()?.trim()?.ifEmpty { null }
+                    container.settingsRepository.getProviderToken()?.trim()?.ifEmpty { null }
                 }.getOrNull()
             } else {
                 null
@@ -395,25 +406,24 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             .build()
     }
 
-    fun handlePushTokenUpdate(deviceToken: String) {
-        val container = containerOrNull()
-        if (container == null) {
-            io.ethan.pushgo.util.SilentSink.w(TAG, "handlePushTokenUpdate ignored: storage unavailable")
-            return
-        }
-        appScope.launch {
-            val normalizedToken = deviceToken.trim().ifEmpty { return@launch }
-            processPushTokenUpdate(
-                container = container,
-                normalizedToken = normalizedToken,
-                triggerPull = true,
-            )
-        }
+    fun handlePushTokenUpdate(deviceToken: String) = handleProviderTokenUpdate(PushChannelType.FCM, deviceToken)
+
+    fun handleProviderTokenUpdate(type: PushChannelType, deviceToken: String) {
+        appScope.launch { syncProviderToken(type, deviceToken) }
+    }
+
+    suspend fun syncProviderToken(type: PushChannelType, deviceToken: String): Boolean {
+        val container = containerOrNull() ?: return false
+        val normalized = deviceToken.trim().ifEmpty { return true }
+        container.settingsRepository.setProviderToken(type, normalized)
+        if (container.settingsRepository.getPushChannelType() != type) return true
+        if (type == PushChannelType.HMS && !HmsSupport.isConfigured()) return true
+        return processPushTokenUpdate(container, normalized, triggerPull = true, provider = type)
     }
 
     private suspend fun syncSubscriptionsOnLaunch() {
         val container = containerOrNull() ?: return
-        val useFcmChannel = runCatching { container.settingsRepository.getUseFcmChannel() }
+        val useFcmChannel = runCatching { container.settingsRepository.getUseProviderChannel() }
             .getOrDefault(true)
         cachedUseFcmChannel = useFcmChannel
         val effectiveFcmMode = effectiveFcmModeForSelection(useFcmChannel)
@@ -427,8 +437,9 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             scheduleProviderIngressSync(reason = "startup_sync_private_mode")
             return
         }
+        val provider = container.settingsRepository.getPushChannelType()
         val cachedToken = runCatching {
-            container.settingsRepository.getFcmToken()?.trim()?.ifEmpty { null }
+            container.settingsRepository.getProviderToken(provider)?.trim()?.ifEmpty { null }
         }.getOrNull()
         container.privateChannelClient.setRuntime(
             fcmAvailable = true,
@@ -440,13 +451,20 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 container = container,
                 normalizedToken = cachedToken,
                 triggerPull = false,
+                provider = provider,
             )
         }
+        if (provider == PushChannelType.HMS && !HmsSupport.isConfigured()) return
         appScope.launch {
-            runCatching { requestFcmTokenWithRetry() }
+            runCatching {
+                if (provider == PushChannelType.HMS) {
+                    container.pushTokenProvider.fetchFor(provider, io.ethan.pushgo.data.AppConstants.fcmTokenTimeoutMs)
+                        ?: error("HMS token unavailable")
+                } else requestFcmTokenWithRetry()
+            }
                 .onSuccess { token ->
                     io.ethan.pushgo.util.SilentSink.i(TAG, "startup FCM token fetch succeeded")
-                    handlePushTokenUpdate(token)
+                    handleProviderTokenUpdate(provider, token)
                 }
                 .onFailure { error ->
                     io.ethan.pushgo.util.SilentSink.w(TAG, "startup FCM token fetch failed: ${error.message}", error)
@@ -455,6 +473,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                         error = error,
                         category = "provider",
                     )
+                    if (provider == PushChannelType.HMS) HmsTokenSyncWorker.scheduleAcquisition(this@PushGoApp)
                     // Keep provider mode enabled; token fetch may recover on next retry/update.
                 }
         }
@@ -525,7 +544,9 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
     }
 
     private fun effectiveFcmModeForSelection(useFcmChannel: Boolean): Boolean {
-        return useFcmChannel && isFcmSupported()
+        val selected = containerOrNull()?.settingsRepository?.getCachedPushChannelType()
+        // A selected HMS route remains isolated even if this generic APK has no HMS config.
+        return useFcmChannel && (selected == PushChannelType.HMS || isFcmSupported())
     }
 
     private fun isEffectiveFcmModeEnabled(): Boolean {

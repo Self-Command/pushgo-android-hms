@@ -9,6 +9,7 @@
 
 # Local config
 /local.properties
+/app/agconnect-services.json
 /app/src/main/jniLibs/
 
 # APK / AAB / outputs

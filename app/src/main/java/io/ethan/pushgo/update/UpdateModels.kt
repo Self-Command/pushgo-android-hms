@@ -11,6 +11,7 @@ data class SignedUpdateFeed(
 
 @Serializable
 data class UpdateFeedPayload(
+    val distribution: String? = null,
     val schemaVersion: Int = 1,
     val generatedAtEpochMs: Long? = null,
     val policy: UpdateFeedPolicy = UpdateFeedPolicy(),
@@ -25,6 +26,7 @@ data class UpdateFeedPolicy(
 
 @Serializable
 data class UpdateFeedEntry(
+    val browserDownload: Boolean = false,
     val channel: String = "stable",
     val versionCode: Int,
     val versionName: String,
@@ -79,6 +81,7 @@ data class UpdateCandidate(
     val notes: String?,
     val minimumAutoUpdateVersionCode: Int?,
     val ignoreSkippedUpgradesBelowVersionCode: Int?,
+    val browserDownload: Boolean = false,
 )
 
 data class UpdateEvaluation(
@@ -98,6 +101,7 @@ enum class UpdateInstallProgressStage {
 
 sealed interface UpdateInstallStartResult {
     data object Started : UpdateInstallStartResult
+    data object BrowserDownloadOpened : UpdateInstallStartResult
     data class PermissionRequired(val apkFilePath: String?) : UpdateInstallStartResult
     data class Failed(val message: String) : UpdateInstallStartResult
 }

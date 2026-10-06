@@ -63,7 +63,7 @@ class PushGoDatabaseMigrationDeviceTest {
         assertEquals(CHANNEL_ID, subscriptions.single().channelId)
         assertEquals(1, messages.size)
         assertEquals(MESSAGE_ID, messages.single().messageId)
-        assertEquals(30, readUserVersion(context.getDatabasePath("pushgo.db")))
+        assertEquals(31, readUserVersion(context.getDatabasePath("pushgo.db")))
         assertEquals(1, container.messageRepository.totalCount())
         assertEquals(1, container.messageRepository.unreadCount())
         assertTrue(context.getDatabasePath("pushgo.db").exists())
@@ -98,7 +98,7 @@ class PushGoDatabaseMigrationDeviceTest {
         assertEquals(MESSAGE_ID, messages.single().messageId)
         assertEquals(1, container.messageRepository.totalCount())
         assertEquals(1, container.messageRepository.unreadCount())
-        assertEquals(30, readUserVersion(context.getDatabasePath("pushgo.db")))
+        assertEquals(31, readUserVersion(context.getDatabasePath("pushgo.db")))
         val sqlite = container.database.openHelper.writableDatabase
         val revision = sqlite.query(
             "SELECT revision FROM message_store_revision WHERE id = 1"
@@ -193,7 +193,7 @@ class PushGoDatabaseMigrationDeviceTest {
             cursor.getString(0) to cursor.getString(1)
         }
 
-        assertEquals(30, readUserVersion(context.getDatabasePath("pushgo.db")))
+        assertEquals(31, readUserVersion(context.getDatabasePath("pushgo.db")))
         assertEquals(0, pendingOutbox)
         assertEquals(1, retainedLedger)
         assertEquals("" to "", retainedLedgerScope)
@@ -288,7 +288,7 @@ class PushGoDatabaseMigrationDeviceTest {
             found
         }
 
-        assertEquals(30, readUserVersion(context.getDatabasePath("pushgo.db")))
+        assertEquals(31, readUserVersion(context.getDatabasePath("pushgo.db")))
         assertEquals(Triple("", "", "pending"), legacyLedger)
         assertEquals(
             listOf("https://gateway-a.example", "device-a", "legacy_single", 0),
@@ -514,7 +514,7 @@ abstract class LegacyPushGoV21Database : RoomDatabase()
         PendingThingMessageEntity::class,
         PendingThingEventEntity::class,
         ChannelSubscriptionEntity::class,
-        AppSettingsEntity::class,
+        LegacyAppSettingsV23Entity::class,
     ],
     version = 23,
     exportSchema = false,
@@ -573,7 +573,7 @@ data class LegacyInboundDeliveryAckOutboxV24Entity(
         PendingThingMessageEntity::class,
         PendingThingEventEntity::class,
         ChannelSubscriptionEntity::class,
-        AppSettingsEntity::class,
+        LegacyAppSettingsV23Entity::class,
     ],
     version = 24,
     exportSchema = false,
@@ -639,9 +639,46 @@ data class LegacyPendingThingEventV25Entity(
         PendingThingMessageEntity::class,
         LegacyPendingThingEventV25Entity::class,
         ChannelSubscriptionEntity::class,
-        AppSettingsEntity::class,
+        LegacyAppSettingsV23Entity::class,
     ],
     version = 25,
     exportSchema = false,
 )
 abstract class LegacyPushGoV25Database : RoomDatabase()
+
+// Freeze the pre-HMS settings schema instead of reusing the current entity.
+@Entity(tableName = "app_settings")
+data class LegacyAppSettingsV23Entity(
+    @PrimaryKey val id: Int = 1,
+    @ColumnInfo(name = "server_address")
+    val serverAddress: String?,
+    val token: String?,
+    @ColumnInfo(name = "notification_key_updated_at")
+    val notificationKeyUpdatedAt: Long?,
+    @ColumnInfo(name = "key_encoding")
+    val keyEncoding: String = KeyEncoding.BASE64.name,
+    @ColumnInfo(name = "fcm_token")
+    val fcmToken: String?,
+    @ColumnInfo(name = "use_fcm_channel")
+    val useFcmChannel: Boolean = true,
+    @ColumnInfo(name = "is_message_page_enabled")
+    val isMessagePageEnabled: Boolean = true,
+    @ColumnInfo(name = "is_event_page_enabled")
+    val isEventPageEnabled: Boolean = true,
+    @ColumnInfo(name = "is_thing_page_enabled")
+    val isThingPageEnabled: Boolean = true,
+    @ColumnInfo(name = "update_auto_check_enabled")
+    val updateAutoCheckEnabled: Boolean = true,
+    @ColumnInfo(name = "update_beta_channel_enabled")
+    val updateBetaChannelEnabled: Boolean = false,
+    @ColumnInfo(name = "update_skipped_version_code")
+    val updateSkippedVersionCode: Int? = null,
+    @ColumnInfo(name = "update_last_prompted_version_code")
+    val updateLastPromptedVersionCode: Int? = null,
+    @ColumnInfo(name = "update_prompt_cooldown_until")
+    val updatePromptCooldownUntil: Long? = null,
+    @ColumnInfo(name = "update_prompt_dismiss_count")
+    val updatePromptDismissCount: Int = 0,
+    @ColumnInfo(name = "update_last_check_at")
+    val updateLastCheckAt: Long? = null,
+)

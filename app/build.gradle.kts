@@ -10,6 +10,9 @@ plugins {
     id("com.google.gms.google-services") apply false
 }
 
+val hmsConfigured = file("agconnect-services.json").exists()
+if (hmsConfigured) apply(plugin = "com.huawei.agconnect")
+
 ksp {
     arg("room.schemaLocation", file("schemas").path)
     arg("room.incremental", "true")
@@ -145,6 +148,8 @@ android {
 
     defaultConfig {
         applicationId = "io.ethan.pushgo"
+        buildConfigField("boolean", "HMS_CONFIGURED", hmsConfigured.toString())
+        buildConfigField("String", "DISTRIBUTION", "\"${System.getenv("PUSHGO_DISTRIBUTION") ?: "public"}\"")
         minSdk = androidMinSdk
         versionCode = appVersionCode
         versionName = appVersionName
@@ -306,6 +311,7 @@ dependencies {
     implementation("io.noties.markwon:image:4.6.2")
     implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.huawei.hms:push:6.13.0.301")
     implementation("com.google.android.gms:play-services-base:18.10.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

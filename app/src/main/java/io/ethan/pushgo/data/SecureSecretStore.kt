@@ -10,6 +10,9 @@ interface SecureSecretStore {
     fun fcmToken(): String?
     fun setFcmToken(token: String?)
 
+    fun hmsToken(): String? = null
+    fun setHmsToken(token: String?) { check(token == null) { "HMS storage is not implemented" } }
+
     fun deviceKey(): String?
     fun setDeviceKey(deviceKey: String?)
 

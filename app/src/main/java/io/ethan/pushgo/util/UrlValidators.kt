@@ -4,7 +4,6 @@ import java.net.URI
 
 object UrlValidators {
     private const val HTTPS_PREFIX = "https://"
-    private val LOOPBACK_HTTP_HOSTS = setOf("127.0.0.1", "localhost", "10.0.2.2", "::1")
 
     fun normalizeHttpsUrl(raw: String?): String? {
         val trimmed = raw?.trim().orEmpty()
@@ -31,9 +30,6 @@ object UrlValidators {
                 }
             }
             "http" -> {
-                if (!LOOPBACK_HTTP_HOSTS.contains(host)) {
-                    return null
-                }
                 if (port > 0) {
                     "http://${urlHost(host)}:$port"
                 } else {

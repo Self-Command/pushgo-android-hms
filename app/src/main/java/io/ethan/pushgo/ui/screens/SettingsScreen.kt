@@ -1,5 +1,8 @@
 package io.ethan.pushgo.ui.screens
 
+import io.ethan.pushgo.data.PushChannelType
+import io.ethan.pushgo.util.HmsSupport
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -284,18 +287,19 @@ fun SettingsScreen(
                         } else {
                             stringResource(R.string.label_notification_transport_private_only_hint)
                         },
-                        selectedUseFcm = (uiState.useFcmChannel && fcmSupported)
-                            || uiState.gatewayPrivateChannelEnabled == false,
+                        selectedChannel = uiState.pushChannelType,
                         isFcmSupported = fcmSupported,
                         isPrivateSupported = uiState.gatewayPrivateChannelEnabled != false,
-                        onSelectUseFcm = { useFcm -> viewModel.updateUseFcmChannel(context, useFcm) },
+                        isHmsSupported = HmsSupport.isAvailable(context),
+                        hmsConfigured = HmsSupport.isConfigured(),
+                        onSelectChannel = { viewModel.updatePushChannel(context, it) },
                     )
                 }
             }
             if (
                 uiState.isChannelModeLoaded
                 && uiState.gatewayPrivateChannelEnabled != false
-                && (!fcmSupported || !uiState.useFcmChannel)
+                && uiState.pushChannelType == PushChannelType.PRIVATE
             ) {
                 item {
                     SettingsRow(
@@ -828,7 +832,7 @@ private fun UpdateChannelSelectorRow(
                         SegmentedButton(
                             selected = !betaEnabled,
                             onClick = { if (betaEnabled) onToggleBeta(false) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                             modifier = Modifier
                                 .widthIn(min = 132.dp)
                                 .testTag("option.settings.update.channel.stable"),
@@ -840,7 +844,7 @@ private fun UpdateChannelSelectorRow(
                         SegmentedButton(
                             selected = betaEnabled,
                             onClick = { if (!betaEnabled) onToggleBeta(true) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                             modifier = Modifier
                                 .widthIn(min = 132.dp)
                                 .testTag("option.settings.update.channel.beta"),
@@ -979,10 +983,12 @@ private fun TransportSelectorRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String?,
-    selectedUseFcm: Boolean,
+    selectedChannel: PushChannelType,
     isFcmSupported: Boolean,
     isPrivateSupported: Boolean,
-    onSelectUseFcm: (Boolean) -> Unit,
+    isHmsSupported: Boolean,
+    hmsConfigured: Boolean,
+    onSelectChannel: (PushChannelType) -> Unit,
 ) {
     val uiColors = PushGoThemeExtras.colors
     SettingsItemContainer {
@@ -993,6 +999,7 @@ private fun TransportSelectorRow(
             headlineContent = { Text(title) },
             supportingContent = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!hmsConfigured) Text(stringResource(R.string.error_hms_not_configured))
                     if (!subtitle.isNullOrBlank()) {
                         Text(subtitle)
                     }
@@ -1000,14 +1007,14 @@ private fun TransportSelectorRow(
                         modifier = Modifier.testTag("segmented.settings.notification_transport"),
                     ) {
                         SegmentedButton(
-                            selected = selectedUseFcm,
+                            selected = selectedChannel == PushChannelType.FCM,
                             onClick = {
-                                if (!selectedUseFcm) {
-                                    onSelectUseFcm(true)
+                                if (selectedChannel != PushChannelType.FCM) {
+                                    onSelectChannel(PushChannelType.FCM)
                                 }
                             },
                             enabled = isFcmSupported,
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                             modifier = Modifier.testTag("option.settings.notification_transport.fcm"),
                             icon = {},
                             colors = pushGoSegmentedButtonColors(),
@@ -1019,14 +1026,14 @@ private fun TransportSelectorRow(
                             )
                         }
                         SegmentedButton(
-                            selected = !selectedUseFcm,
+                            selected = selectedChannel == PushChannelType.PRIVATE,
                             onClick = {
-                                if (selectedUseFcm) {
-                                    onSelectUseFcm(false)
+                                if (selectedChannel != PushChannelType.PRIVATE) {
+                                    onSelectChannel(PushChannelType.PRIVATE)
                                 }
                             },
                             enabled = isPrivateSupported,
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                             modifier = Modifier.testTag("option.settings.notification_transport.private"),
                             icon = {},
                             colors = pushGoSegmentedButtonColors(),
@@ -1037,6 +1044,14 @@ private fun TransportSelectorRow(
                                 modifier = Modifier.padding(vertical = 1.dp),
                             )
                         }
+                        SegmentedButton(
+                            selected = selectedChannel == PushChannelType.HMS,
+                            onClick = { onSelectChannel(PushChannelType.HMS) },
+                            enabled = isHmsSupported,
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                            modifier = Modifier.testTag("option.settings.notification_transport.hms"),
+                            icon = {}, colors = pushGoSegmentedButtonColors(),
+                        ) { Text(stringResource(R.string.label_transport_hms), style = MaterialTheme.typography.labelMedium) }
                     }
                 }
             },

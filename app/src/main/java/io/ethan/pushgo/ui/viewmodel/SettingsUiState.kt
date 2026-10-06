@@ -8,6 +8,7 @@ data class SettingsUiState(
     val gatewayAddress: String = "",
     val gatewayToken: String = "",
     val deviceToken: String? = null,
+    val pushChannelType: io.ethan.pushgo.data.PushChannelType = io.ethan.pushgo.data.PushChannelType.FCM,
     val useFcmChannel: Boolean = true,
     val isFcmSupported: Boolean = true,
     val gatewayPrivateChannelEnabled: Boolean? = null,

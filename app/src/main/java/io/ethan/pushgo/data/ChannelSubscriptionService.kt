@@ -379,6 +379,8 @@ class ChannelSubscriptionService(
         token: String?,
         platform: String,
         providerToken: String,
+        deviceKey: String? = null,
+        channelType: String? = null,
     ) = withContext(ioDispatcher) {
         val normalizedProviderToken = providerToken.trim()
         if (normalizedProviderToken.isEmpty()) {
@@ -388,6 +390,8 @@ class ChannelSubscriptionService(
         val payload = JSONObject().apply {
             put("platform", platform.trim().lowercase())
             put("provider_token", normalizedProviderToken)
+            deviceKey?.let { put("device_key", it) }
+            channelType?.let { put("channel_type", it) }
         }
         execute(endpoint, token, "POST", payload)
         Unit

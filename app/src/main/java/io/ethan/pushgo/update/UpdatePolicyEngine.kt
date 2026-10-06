@@ -132,6 +132,7 @@ internal object UpdateCandidateSelector {
             notes = resolveNotes(entry, runtime.preferredLocales),
             minimumAutoUpdateVersionCode = entry.minimumAutoUpdateVersionCode,
             ignoreSkippedUpgradesBelowVersionCode = entry.ignoreSkippedUpgradesBelowVersionCode,
+            browserDownload = entry.browserDownload,
         )
     }
 

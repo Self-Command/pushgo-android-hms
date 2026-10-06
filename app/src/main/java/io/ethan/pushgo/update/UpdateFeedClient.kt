@@ -50,6 +50,9 @@ class UpdateFeedClient(private val context: Context) {
         val parsed = json.decodeFromString<SignedUpdateFeed>(raw)
         val rawPayload = rawDocument["payload"] ?: error("Update feed payload is missing")
         verifySignatureIfConfigured(parsed, rawPayload)
+        require(parsed.payload.distribution == null || parsed.payload.distribution == io.ethan.pushgo.BuildConfig.DISTRIBUTION) {
+            "Update feed belongs to a different distribution"
+        }
         parsed.payload
     }
 

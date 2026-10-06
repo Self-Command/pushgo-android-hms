@@ -1,5 +1,7 @@
 package io.ethan.pushgo.data
 
+import kotlinx.coroutines.sync.withLock
+
 import androidx.room.withTransaction
 import io.ethan.pushgo.data.db.PushGoDatabase
 import io.ethan.pushgo.data.model.ChannelSubscription
@@ -355,6 +357,7 @@ class ChannelSubscriptionRepository(
     suspend fun syncProviderDeviceToken(
         deviceToken: String,
         expectedGatewayUrl: String? = null,
+        expectedProvider: PushChannelType? = null,
     ): String {
         val normalized = deviceToken.trim()
         if (normalized.isEmpty()) {
@@ -366,7 +369,7 @@ class ChannelSubscriptionRepository(
         }
         val config = resolveServerConfig()
         requireExpectedGateway(config, expectedGatewayUrl)
-        return ensureProviderRoute(normalized, config)
+        return ensureProviderRoute(normalized, config, expectedProvider)
     }
 
     suspend fun cleanupPreviousGatewayDeviceRoute(
@@ -376,6 +379,14 @@ class ChannelSubscriptionRepository(
     ) {
         val deviceKey = previousDeviceKey.trim()
         if (deviceKey.isEmpty()) return
+        runCatching {
+            service.deleteDeviceChannel(
+                baseUrl = previousBaseUrl,
+                token = previousToken,
+                deviceKey = deviceKey,
+                channelType = PushChannelType.HMS.wireName,
+            )
+        }
         runCatching {
             service.deleteDeviceChannel(
                 baseUrl = previousBaseUrl,
@@ -450,7 +461,7 @@ class ChannelSubscriptionRepository(
         )
     }
 
-    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig): String {
+    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig, expectedProvider: PushChannelType? = null): String = settingsRepository.pushChannelMutex.withLock {
         val normalizedToken = deviceToken.trim()
         if (normalizedToken.isEmpty()) {
             throw ChannelSubscriptionException.local(
@@ -459,17 +470,25 @@ class ChannelSubscriptionRepository(
                 category = GatewayErrorCategory.VALIDATION,
             )
         }
+        val selected = settingsRepository.getPushChannelType()
+        check(expectedProvider == null || selected == expectedProvider) { "Push channel changed before route registration" }
+        check(selected != PushChannelType.PRIVATE) { "Provider route requested in private mode" }
+        check(selected != PushChannelType.HMS || io.ethan.pushgo.util.HmsSupport.isConfigured()) { "HMS is not configured in this APK" }
+        val selectedToken = settingsRepository.getProviderToken(selected)
+        check(selectedToken == null || selectedToken == normalizedToken) { "Superseded provider token rejected" }
+        val otherToken = settingsRepository.getProviderToken(if (selected == PushChannelType.FCM) PushChannelType.HMS else PushChannelType.FCM)
+        check(otherToken == null || otherToken != normalizedToken) { "Inactive provider token rejected" }
         val deviceKey = ensureDeviceIdentity(config)
-        val previousToken = settingsRepository.getFcmToken()?.trim()?.ifEmpty { null }
+        val previousToken = settingsRepository.getProviderToken()?.trim()?.ifEmpty { null }
         if (previousToken != normalizedToken) {
-            settingsRepository.setFcmToken(normalizedToken)
+            settingsRepository.setProviderToken(selected, normalizedToken)
         }
         val upserted = service.upsertDeviceChannel(
             baseUrl = config.address,
             token = config.token,
             deviceKey = deviceKey,
             platform = "android",
-            channelType = FCM_CHANNEL_TYPE,
+            channelType = settingsRepository.getPushChannelType().wireName,
             providerToken = normalizedToken,
         )
         val resolvedDeviceKey = upserted.deviceKey.trim()
@@ -482,10 +501,12 @@ class ChannelSubscriptionRepository(
                     token = config.token,
                     platform = "android",
                     providerToken = previousToken,
+                    deviceKey = resolvedDeviceKey,
+                    channelType = selected.wireName,
                 )
             }
         }
-        return resolvedDeviceKey
+        resolvedDeviceKey
     }
 
     private suspend fun ensureDeviceIdentity(config: ServerConfig): String {
@@ -515,7 +536,7 @@ class ChannelSubscriptionRepository(
         if (cached != null) {
             return cached
         }
-        val token = settingsRepository.getFcmToken()
+        val token = settingsRepository.getProviderToken()
             ?.trim()
             ?.ifEmpty { null }
             ?: fetchFcmTokenForIngress()
@@ -528,6 +549,7 @@ class ChannelSubscriptionRepository(
     }
 
     private suspend fun fetchFcmTokenForIngress(): String? {
+        val provider = settingsRepository.getPushChannelType()
         return runCatching {
             withTimeout(FCM_TOKEN_BOOTSTRAP_TIMEOUT_MS) {
                 pushTokenProvider.fetchToken(FCM_TOKEN_BOOTSTRAP_TIMEOUT_MS)
@@ -536,8 +558,9 @@ class ChannelSubscriptionRepository(
             ?.trim()
             ?.ifEmpty { null }
             ?.also { token ->
-                settingsRepository.setFcmToken(token)
+                settingsRepository.setProviderToken(provider, token)
             }
+            ?.takeIf { provider == settingsRepository.getPushChannelType() }
     }
 
     private suspend fun subscribeInternal(

@@ -34,6 +34,17 @@ class UpdateInstaller(private val context: Context) {
         candidate: UpdateCandidate,
         onProgress: ((UpdateInstallProgressStage) -> Unit)? = null,
     ): UpdateInstallStartResult = withContext(Dispatchers.IO) {
+        // Private release assets require the user's browser login, never an embedded GitHub token.
+        if (candidate.browserDownload) {
+            return@withContext try {
+                require(candidate.apkUrl.startsWith("https://")) { "Release page requires HTTPS" }
+                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(candidate.apkUrl))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                UpdateInstallStartResult.BrowserDownloadOpened
+            } catch (error: Exception) {
+                UpdateInstallStartResult.Failed(error.message ?: "Unable to open authenticated release download")
+            }
+        }
         onProgress?.invoke(UpdateInstallProgressStage.DOWNLOADING_PACKAGE)
         val apkFile = runCatching { downloadAndVerify(candidate) }.getOrElse { error ->
             return@withContext UpdateInstallStartResult.Failed(

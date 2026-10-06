@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <queries>
+        <package android:name="com.huawei.hwid" />
+        <intent>
+            <action android:name="com.huawei.hms.core.aidlservice" />
+        </intent>
         <intent>
             <action android:name="android.settings.MANAGE_UNKNOWN_APP_SOURCES" />
         </intent>
@@ -16,6 +20,7 @@
 
     <application
         android:name=".PushGoApp"
+        android:usesCleartextTraffic="true"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -39,6 +44,11 @@
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
+        </service>
+
+        <meta-data android:name="push_kit_auto_init_enabled" android:value="false" />
+        <service android:name=".notifications.HuaweiMessagingService" android:exported="false">
+            <intent-filter><action android:name="com.huawei.push.action.MESSAGING_EVENT" /></intent-filter>
         </service>
 
         <service
