@@ -265,7 +265,7 @@ class SettingsViewModel(
                 updateSuppressedByCooldown = evaluation.suppressedByCooldown
                 val failure = evaluation.failureMessage
                 if (!failure.isNullOrBlank()) {
-                    errorMessage = TextMessage(failure)
+                    if (settingsRepository.shouldNotifyUpdateCheckFailure(manual)) errorMessage = TextMessage(failure)
                     return@launch
                 }
                 if (manual) {

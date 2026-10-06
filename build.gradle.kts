@@ -1,6 +1,9 @@
 buildscript {
     repositories { google(); mavenCentral(); maven("https://developer.huawei.com/repo/") }
-    dependencies { classpath("com.huawei.agconnect:agcp:1.9.6.300") }
+    dependencies {
+        classpath("com.android.tools.build:gradle:9.2.1")
+        classpath("com.huawei.agconnect:agcp:1.9.6.300")
+    }
 }
 
 plugins {

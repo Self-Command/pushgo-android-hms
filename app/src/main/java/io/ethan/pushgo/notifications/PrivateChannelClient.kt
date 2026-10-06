@@ -710,6 +710,8 @@ class PrivateChannelClient(
                     token,
                     "/channel/device/provider-token/retire",
                     JSONObject().apply {
+                            put("device_key", state.deviceKey)
+                            put("channel_type", channelType.trim().lowercase())
                         put("platform", "android")
                         put("provider_token", normalizedProviderToken)
                     },

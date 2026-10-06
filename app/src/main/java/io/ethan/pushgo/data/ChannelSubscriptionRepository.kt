@@ -463,6 +463,7 @@ class ChannelSubscriptionRepository(
         }
         val selected = settingsRepository.getPushChannelType()
         check(selected != PushChannelType.PRIVATE) { "Provider route requested in private mode" }
+        check(selected != PushChannelType.HMS || io.ethan.pushgo.util.HmsSupport.isConfigured()) { "HMS is not configured in this APK" }
         val otherToken = settingsRepository.getProviderToken(if (selected == PushChannelType.FCM) PushChannelType.HMS else PushChannelType.FCM)
         check(otherToken == null || otherToken != normalizedToken) { "Inactive provider token rejected" }
         val deviceKey = ensureDeviceIdentity(config)
@@ -488,6 +489,8 @@ class ChannelSubscriptionRepository(
                     token = config.token,
                     platform = "android",
                     providerToken = previousToken,
+                    deviceKey = resolvedDeviceKey,
+                    channelType = selected.wireName,
                 )
             }
         }

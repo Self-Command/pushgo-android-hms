@@ -13,12 +13,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.time.Instant
+import kotlinx.coroutines.sync.withLock
+import io.ethan.pushgo.update.UpdateCheckFailureNoticeGate
 
 class SettingsRepository(
     private val appSettingsDao: AppSettingsDao,
     private val secretStore: SecureSecretStore,
     private val settingsCache: SharedPreferences,
 ) {
+    private val settingsWriteMutex = kotlinx.coroutines.sync.Mutex()
+    private val updateFailureNoticeGate = UpdateCheckFailureNoticeGate(
+        lock = settingsCache,
+        hasNotified = { settingsCache.getBoolean("update_auto_failure_notified", false) },
+        markNotified = { settingsCache.edit().putBoolean("update_auto_failure_notified", true).commit() },
+    )
+    fun shouldNotifyUpdateCheckFailure(manual: Boolean): Boolean = updateFailureNoticeGate.shouldNotify(manual)
     private val settingsFlow = appSettingsDao.observe()
     val pushChannelMutex = kotlinx.coroutines.sync.Mutex()
     private val hmsTokenState = MutableStateFlow(secretStore.hmsToken())
@@ -173,7 +182,9 @@ class SettingsRepository(
         )
     }
 
-    private suspend fun loadSettings(): AppSettingsEntity {
+    private suspend fun loadSettings(): AppSettingsEntity = settingsWriteMutex.withLock { loadSettingsUnlocked() }
+
+    private suspend fun loadSettingsUnlocked(): AppSettingsEntity {
         val current = appSettingsDao.get() ?: defaultSettings()
         val migrated = if (current.pushChannelType == null) {
             current.copy(pushChannelType = PushChannelType.restore(null, current.useFcmChannel, secretStore.hmsToken() != null).wireName)
@@ -187,8 +198,8 @@ class SettingsRepository(
         }
     }
 
-    private suspend fun updateSettings(update: (AppSettingsEntity) -> AppSettingsEntity) {
-        val updated = update(loadSettings())
+    private suspend fun updateSettings(update: (AppSettingsEntity) -> AppSettingsEntity) = settingsWriteMutex.withLock {
+        val updated = update(loadSettingsUnlocked())
         appSettingsDao.upsert(updated)
         settingsCache.edit { putString("push_channel_type", updated.pushChannelType) }
         cacheUseFcmChannel(updated.useFcmChannel)
