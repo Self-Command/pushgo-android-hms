@@ -13,6 +13,7 @@ data class SettingsUiState(
     val isFcmSupported: Boolean = true,
     val gatewayPrivateChannelEnabled: Boolean? = null,
     val isChannelModeLoaded: Boolean = false,
+    val isSwitchingPushChannel: Boolean = false,
     val privateTransportStatus: String = "未连接",
     val decryptionKeyInput: String = "",
     val keyEncoding: KeyEncoding = KeyEncoding.BASE64,

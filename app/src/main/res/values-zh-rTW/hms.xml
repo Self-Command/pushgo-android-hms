@@ -1,6 +1,7 @@
 <resources>
     <string name="message_update_private_download">請登入 GitHub 下載個人版更新</string>
-    <string name="label_transport_hms">華為 HMS</string>
+    <string name="label_transport_hms">HMS</string>
+    <string name="label_transport_switching">正在切換通道…</string>
     <string name="error_hms_not_configured">目前 APK 未設定 HMS</string>
     <string name="error_hms_unavailable">HMS Core 無法使用，請安裝或啟用 HMS Core</string>
 </resources>

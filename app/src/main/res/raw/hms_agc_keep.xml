@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AGConnect resolves generated client configuration strings by name. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/agc_*" />

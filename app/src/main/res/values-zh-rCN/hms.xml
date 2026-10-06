@@ -1,6 +1,7 @@
 <resources>
     <string name="message_update_private_download">请登录 GitHub 下载个人版更新</string>
-    <string name="label_transport_hms">华为 HMS</string>
+    <string name="label_transport_hms">HMS</string>
+    <string name="label_transport_switching">正在切换通道…</string>
     <string name="error_hms_not_configured">当前 APK 未配置 HMS</string>
     <string name="error_hms_unavailable">HMS Core 不可用，请安装或启用 HMS Core</string>
 </resources>
