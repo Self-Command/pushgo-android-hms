@@ -351,7 +351,7 @@ class ChannelSubscriptionRepository(
     }
 
     suspend fun handleTokenUpdate(deviceToken: String) {
-        settingsRepository.setActiveProviderToken(deviceToken.trim().ifEmpty { null })
+        settingsRepository.setFcmToken(deviceToken.trim().ifEmpty { null })
     }
 
     suspend fun syncProviderDeviceToken(
@@ -477,7 +477,7 @@ class ChannelSubscriptionRepository(
         val deviceKey = ensureDeviceIdentity(config)
         val previousToken = settingsRepository.getProviderToken()?.trim()?.ifEmpty { null }
         if (previousToken != normalizedToken) {
-            settingsRepository.setActiveProviderToken(normalizedToken)
+            settingsRepository.setProviderToken(selected, normalizedToken)
         }
         val upserted = service.upsertDeviceChannel(
             baseUrl = config.address,
@@ -545,6 +545,7 @@ class ChannelSubscriptionRepository(
     }
 
     private suspend fun fetchFcmTokenForIngress(): String? {
+        val provider = settingsRepository.getPushChannelType()
         return runCatching {
             withTimeout(FCM_TOKEN_BOOTSTRAP_TIMEOUT_MS) {
                 pushTokenProvider.fetchToken(FCM_TOKEN_BOOTSTRAP_TIMEOUT_MS)
@@ -553,8 +554,9 @@ class ChannelSubscriptionRepository(
             ?.trim()
             ?.ifEmpty { null }
             ?.also { token ->
-                settingsRepository.setActiveProviderToken(token)
+                settingsRepository.setProviderToken(provider, token)
             }
+            ?.takeIf { provider == settingsRepository.getPushChannelType() }
     }
 
     private suspend fun subscribeInternal(

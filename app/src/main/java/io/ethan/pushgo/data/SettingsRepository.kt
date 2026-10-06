@@ -80,7 +80,6 @@ class SettingsRepository(
     suspend fun setProviderToken(type: PushChannelType, token: String?) {
         when(type) { PushChannelType.FCM -> setFcmToken(token); PushChannelType.HMS -> setHmsToken(token); PushChannelType.PRIVATE -> Unit }
     }
-    suspend fun setActiveProviderToken(token: String?) = setProviderToken(getPushChannelType(), token)
     val fcmTokenFlow: StateFlow<String?> = fcmTokenState.asStateFlow()
     val updateAutoCheckEnabledFlow: Flow<Boolean> =
         settingsFlow
