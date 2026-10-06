@@ -357,6 +357,7 @@ class ChannelSubscriptionRepository(
     suspend fun syncProviderDeviceToken(
         deviceToken: String,
         expectedGatewayUrl: String? = null,
+        expectedProvider: PushChannelType? = null,
     ): String {
         val normalized = deviceToken.trim()
         if (normalized.isEmpty()) {
@@ -368,7 +369,7 @@ class ChannelSubscriptionRepository(
         }
         val config = resolveServerConfig()
         requireExpectedGateway(config, expectedGatewayUrl)
-        return ensureProviderRoute(normalized, config)
+        return ensureProviderRoute(normalized, config, expectedProvider)
     }
 
     suspend fun cleanupPreviousGatewayDeviceRoute(
@@ -460,7 +461,7 @@ class ChannelSubscriptionRepository(
         )
     }
 
-    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig): String = settingsRepository.pushChannelMutex.withLock {
+    private suspend fun ensureProviderRoute(deviceToken: String, config: ServerConfig, expectedProvider: PushChannelType? = null): String = settingsRepository.pushChannelMutex.withLock {
         val normalizedToken = deviceToken.trim()
         if (normalizedToken.isEmpty()) {
             throw ChannelSubscriptionException.local(
@@ -470,8 +471,11 @@ class ChannelSubscriptionRepository(
             )
         }
         val selected = settingsRepository.getPushChannelType()
+        check(expectedProvider == null || selected == expectedProvider) { "Push channel changed before route registration" }
         check(selected != PushChannelType.PRIVATE) { "Provider route requested in private mode" }
         check(selected != PushChannelType.HMS || io.ethan.pushgo.util.HmsSupport.isConfigured()) { "HMS is not configured in this APK" }
+        val selectedToken = settingsRepository.getProviderToken(selected)
+        check(selectedToken == null || selectedToken == normalizedToken) { "Superseded provider token rejected" }
         val otherToken = settingsRepository.getProviderToken(if (selected == PushChannelType.FCM) PushChannelType.HMS else PushChannelType.FCM)
         check(otherToken == null || otherToken != normalizedToken) { "Inactive provider token rejected" }
         val deviceKey = ensureDeviceIdentity(config)

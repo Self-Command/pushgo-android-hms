@@ -292,14 +292,16 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         container: AppContainer,
         normalizedToken: String,
         triggerPull: Boolean,
+        provider: PushChannelType,
     ) {
+        if (container.settingsRepository.getPushChannelType() != provider) return
         val useFcmChannel = runCatching { container.settingsRepository.getUseProviderChannel() }
             .getOrDefault(true)
         cachedUseFcmChannel = useFcmChannel
         val effectiveFcmMode = effectiveFcmModeForSelection(useFcmChannel)
         if (effectiveFcmMode && (container.settingsRepository.getPushChannelType() != PushChannelType.HMS || HmsSupport.isConfigured())) {
             runCatching {
-                container.channelRepository.syncProviderDeviceToken(normalizedToken)
+                container.channelRepository.syncProviderDeviceToken(normalizedToken, expectedProvider = provider)
             }.onFailure { error ->
                 PushGoAutomation.recordRuntimeError(
                     source = "provider.sync_device_token",
@@ -317,7 +319,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 )
             }
         }
-        if (container.settingsRepository.getProviderToken() != normalizedToken) return
+        if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return
         if (effectiveFcmMode && triggerPull) {
             scheduleProviderIngressSync(reason = "token_update")
         }
@@ -409,7 +411,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         container.settingsRepository.setProviderToken(type, normalized)
         if (container.settingsRepository.getPushChannelType() != type) return
         if (type == PushChannelType.HMS && !HmsSupport.isConfigured()) return
-        processPushTokenUpdate(container, normalized, triggerPull = true)
+        processPushTokenUpdate(container, normalized, triggerPull = true, provider = type)
     }
 
     private suspend fun syncSubscriptionsOnLaunch() {
@@ -428,8 +430,9 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             scheduleProviderIngressSync(reason = "startup_sync_private_mode")
             return
         }
+        val provider = container.settingsRepository.getPushChannelType()
         val cachedToken = runCatching {
-            container.settingsRepository.getProviderToken()?.trim()?.ifEmpty { null }
+            container.settingsRepository.getProviderToken(provider)?.trim()?.ifEmpty { null }
         }.getOrNull()
         container.privateChannelClient.setRuntime(
             fcmAvailable = true,
@@ -441,9 +444,9 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 container = container,
                 normalizedToken = cachedToken,
                 triggerPull = false,
+                provider = provider,
             )
         }
-        val provider = container.settingsRepository.getPushChannelType()
         if (provider == PushChannelType.HMS && !HmsSupport.isConfigured()) return
         appScope.launch {
             runCatching {
