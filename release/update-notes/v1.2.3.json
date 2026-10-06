@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.3 improves message productivity, safer deletion, and media playback reliability on Android.\n- Added undoable local deletion so mistaken delete actions can be recovered\n- Added mark-all-displayed-read action and refined facet-based multi-select message filters\n- Improved message receiving reliability and overall in-app message state consistency\n- Fixed animated image playback detection and made detail-page media loading non-blocking",
-  "zh-CN": "PushGo 1.2.3 在 Android 端重点提升了消息处理效率、删除安全性与媒体加载稳定性。\n- 新增本地删除可撤销能力，误删后可快速恢复\n- 新增“全部标记已读（当前展示项）”操作，并优化基于分面的多选筛选工具栏\n- 提升消息接收稳定性与应用内消息状态一致性\n- 修复动图播放识别问题，并将详情页媒体加载改为非阻塞",
-  "zh-TW": "PushGo 1.2.3 在 Android 端重點提升了訊息處理效率、刪除安全性與媒體載入穩定性。\n- 新增本地刪除可復原能力，誤刪後可快速還原\n- 新增「全部標記已讀（目前顯示項目）」操作，並優化基於分面的多選篩選工具列\n- 提升訊息接收穩定性與應用內訊息狀態一致性\n- 修復動圖播放辨識問題，並將詳情頁媒體載入改為非阻塞"
-}

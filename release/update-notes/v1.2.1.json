@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.1 is a temporary stable hotfix release for Android reliability.\n- Startup-window inbound messages now follow a worker retry path instead of being dropped\n- Better provider/direct ingress routing with safer duplicate suppression\n- More stable settings and message detail state updates\n- Event and object pages now provide smoother detail sync, pagination, and close/delete interactions",
-  "zh-CN": "PushGo 1.2.1 是面向 Android 稳定性的临时正式热修复版本。\n- 冷启动窗口期的入站消息不再被丢弃，改为走 Worker 重试链路\n- 优化 provider/direct 入站路由，并增强重复消息抑制\n- 提升设置页与消息详情页状态更新的稳定性\n- 事件页与对象页补齐了详情同步、分页加载与关闭/删除交互优化",
-  "zh-TW": "PushGo 1.2.1 是面向 Android 穩定性的臨時正式熱修復版本。\n- 冷啟動窗口期的入站訊息不再被丟棄，改為走 Worker 重試鏈路\n- 優化 provider/direct 入站路由，並強化重複訊息抑制\n- 提升設定頁與訊息詳情頁狀態更新的穩定性\n- 事件頁與物件頁補齊了詳情同步、分頁載入與關閉/刪除互動優化"
-}

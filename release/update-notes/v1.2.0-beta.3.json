@@ -1,5 +1,0 @@
-{
-  "en": "This beta improves ACK + pull reliability for provider-delivered messages.\n- Better token-update handling and startup pull recovery\n- Better startup guidance for notification and battery-optimization settings\n- More consistent notification presentation and lock-screen privacy defaults",
-  "zh-CN": "此测试版重点提升 provider 下发消息的 ACK + pull 可靠性。\n- 优化 token 更新后的拉取链路与冷启动恢复\n- 增强通知权限与电池优化设置的启动引导\n- 提升通知展示级别与锁屏隐私默认策略的一致性",
-  "zh-TW": "此測試版重點提升 provider 下發訊息的 ACK + pull 可靠性。\n- 優化 token 更新後的拉取鏈路與冷啟動恢復\n- 強化通知權限與電池最佳化設定的啟動引導\n- 提升通知呈現等級與鎖定畫面隱私預設策略的一致性"
-}

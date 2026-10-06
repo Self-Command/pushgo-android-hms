@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.4 improves message filter continuity and gateway error clarity on Android.\\n- Unread-only filter preference is now preserved across app restarts\\n- Private channel subscriber-limit errors now show clearer actionable guidance in-app",
-  "zh-CN": "PushGo 1.2.4 在 Android 端提升了筛选状态连续性与网关错误提示清晰度。\\n- 只看未读筛选偏好现在会在应用重启后继续保留\\n- 私有频道订阅者达到上限时，会在应用内显示更明确的处理指引",
-  "zh-TW": "PushGo 1.2.4 在 Android 端提升了篩選狀態連續性與網關錯誤提示清晰度。\\n- 只看未讀篩選偏好現在會在應用重啟後繼續保留\\n- 私有頻道訂閱者達到上限時，會在應用內顯示更明確的處理指引"
-}

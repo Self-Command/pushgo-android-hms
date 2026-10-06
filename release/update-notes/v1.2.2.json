@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.2 upgrades encrypted payload fidelity and media detail UX on Android.\n- Decrypted message fields now keep URL, image, and event/object metadata aligned across list and detail surfaces\n- Message, event, and object pages now show clearer channel and decryption status chips\n- Detail-page images now use explicit loading/error placeholders and open preview only after media is ready",
-  "zh-CN": "PushGo 1.2.2 提升了 Android 端加密载荷的还原一致性与图片详情体验。\n- 解密后的 URL、图片与事件/对象元数据会在列表与详情页保持一致\n- 消息、事件、对象页面新增更清晰的频道与解密状态标记\n- 详情页图片新增加载/失败占位，并仅在媒体就绪后允许打开预览",
-  "zh-TW": "PushGo 1.2.2 提升了 Android 端加密載荷的還原一致性與圖片詳情體驗。\n- 解密後的 URL、圖片與事件/物件中繼資料會在列表與詳情頁保持一致\n- 訊息、事件、物件頁面新增更清晰的頻道與解密狀態標記\n- 詳情頁圖片新增載入/失敗佔位，並僅在媒體就緒後允許開啟預覽"
-}

@@ -1,5 +1,0 @@
-{
-  "en": "This beta fixes Android in-app update verification and restores update notes in the update prompt.\n- Signed update feeds now verify correctly again\n- Release notes are shown again when a new version is detected",
-  "zh-CN": "此测试版修复了 Android 应用内更新的签名校验，并恢复了更新提示中的更新说明显示。\n- 已签名的更新 feed 现在可以再次正确校验\n- 检测到新版本时会重新显示更新说明",
-  "zh-TW": "此測試版修復了 Android 應用內更新的簽章校驗，並恢復了更新提示中的更新說明顯示。\n- 已簽章的更新 feed 現在可以再次正確校驗\n- 偵測到新版本時會重新顯示更新說明"
-}

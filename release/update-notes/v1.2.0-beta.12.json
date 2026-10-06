@@ -1,5 +1,0 @@
-{
-  "en": "This beta improves Android stability and release-note delivery in update prompts.\n- Update feed notes now strictly use per-version update-notes sources\n- Improved reliability for app startup and settings navigation",
-  "zh-CN": "此测试版提升了 Android 稳定性，并改进了更新提示中的升级说明投放。\n- 更新 feed 的说明现在严格使用对应版本的 update-notes 数据源\n- 提升了应用启动与设置页导航的稳定性",
-  "zh-TW": "此測試版提升了 Android 穩定性，並改進了更新提示中的升級說明投放。\n- 更新 feed 的說明現在嚴格使用對應版本的 update-notes 資料來源\n- 提升了應用啟動與設定頁導覽的穩定性"
-}

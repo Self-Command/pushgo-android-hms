@@ -1,5 +1,0 @@
-{
-  "en": "This beta rolls up all Android changes accumulated since v1.2.0-beta.13.\n- Improved install-blocked handling with immediate in-app alerting\n- Added one-tap fallback to continue via Android system installer",
-  "zh-CN": "此测试版合并了自 v1.2.0-beta.13 以来的全部 Android 累积改动。\n- 优化了安装受阻时的应用内即时提示\n- 新增一键回退到 Android 系统安装器继续安装",
-  "zh-TW": "此測試版合併了自 v1.2.0-beta.13 以來的全部 Android 累積改動。\n- 優化了安裝受阻時的應用內即時提示\n- 新增一鍵回退至 Android 系統安裝器繼續安裝"
-}

@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.5 improves message detail stability and image fallback clarity on Android.\\n- Message detail bottom sheet now opens and sizes more consistently across screen sizes\\n- Failed image loads now show clearer localized placeholders in both detail view and markdown content",
-  "zh-CN": "PushGo 1.2.5 提升了 Android 端消息详情稳定性与图片失败回退提示清晰度。\\n- 消息详情底部弹层在不同屏幕尺寸下的打开与尺寸表现更稳定\\n- 图片加载失败时，在详情页和 Markdown 内容中都会显示更清晰的本地化占位提示",
-  "zh-TW": "PushGo 1.2.5 提升了 Android 端訊息詳情穩定性與圖片失敗回退提示清晰度。\\n- 訊息詳情底部彈層在不同螢幕尺寸下的開啟與尺寸表現更穩定\\n- 圖片載入失敗時，在詳情頁與 Markdown 內容中都會顯示更清晰的在地化占位提示"
-}

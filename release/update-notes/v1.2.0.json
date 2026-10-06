@@ -1,5 +1,0 @@
-{
-  "en": "PushGo 1.2.0 improves Android in-app update reliability.\n- Immediate in-app alert when installation is blocked by system policy\n- One-tap fallback to continue with Android system installer",
-  "zh-CN": "PushGo 1.2.0 提升了 Android 应用内更新的可靠性。\n- 当系统策略拦截安装时，应用内会立即弹出提示\n- 支持一键回退到 Android 系统安装器继续安装",
-  "zh-TW": "PushGo 1.2.0 提升了 Android 應用內更新的可靠性。\n- 當系統策略攔截安裝時，應用內會立即彈出提示\n- 支援一鍵回退至 Android 系統安裝器繼續安裝"
-}

@@ -1,5 +1,0 @@
-{
-  "en": "This beta improves blocked-install handling during Android in-app updates.\n- App now shows an in-app alert when installation is blocked by system policy\n- Added one-tap fallback to continue with Android system installer",
-  "zh-CN": "此测试版改进了 Android 应用内更新时“安装受阻”的处理体验。\n- 当系统策略拦截安装时，应用内会弹出明确提示\n- 新增一键回退到 Android 系统安装器继续安装",
-  "zh-TW": "此測試版改善了 Android 應用內更新時「安裝受阻」的處理體驗。\n- 當系統策略攔截安裝時，應用內會彈出明確提示\n- 新增一鍵回退至 Android 系統安裝器繼續安裝"
-}
