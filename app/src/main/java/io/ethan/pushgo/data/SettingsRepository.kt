@@ -51,6 +51,12 @@ class SettingsRepository(
             .map { it?.updateBetaChannelEnabled ?: getCachedUpdateBetaChannelEnabled() }
             .distinctUntilChanged()
 
+    fun getTaskNotesServiceOrigin(): String? = settingsCache.getString("tasknotes_service_origin", null)
+
+    fun setTaskNotesServiceOrigin(origin: String?) {
+        settingsCache.edit { putString("tasknotes_service_origin", origin) }
+    }
+
     fun getCachedUseFcmChannel(): Boolean =
         true
 

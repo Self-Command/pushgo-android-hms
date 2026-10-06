@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tasknotes_checkin_action">Check in</string>
+    <string name="tasknotes_service_title">TaskNotes check-in service</string>
+    <string name="tasknotes_service_hint">https://tasks.example.com</string>
+    <string name="tasknotes_service_description">Only this service can add check-in buttons. Leave empty to disable.</string>
+    <string name="tasknotes_service_invalid">Enter an HTTPS origin without a path, query or credentials.</string>
+    <string name="tasknotes_service_save">Save</string>
+    <string name="tasknotes_service_cancel">Cancel</string>
+</resources>

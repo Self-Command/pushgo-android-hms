@@ -93,6 +93,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.ethan.pushgo.PushGoApp
+import io.ethan.pushgo.notifications.TaskNotesActionPolicy
 import io.ethan.pushgo.BuildConfig
 import io.ethan.pushgo.data.AppConstants
 import io.ethan.pushgo.update.UpdateCandidate
@@ -134,6 +136,12 @@ fun SettingsScreen(
     )
     var showDecryptionSheet by remember { mutableStateOf(false) }
     var showGatewaySheet by remember { mutableStateOf(false) }
+    val taskNotesSettings = remember(context) {
+        (context.applicationContext as? PushGoApp)?.containerOrNull()?.settingsRepository
+    }
+    var showTaskNotesDialog by remember { mutableStateOf(false) }
+    var taskNotesOrigin by remember { mutableStateOf(taskNotesSettings?.getTaskNotesServiceOrigin().orEmpty()) }
+    var taskNotesOriginError by remember { mutableStateOf(false) }
     val bottomGestureInset = rememberBottomGestureInset()
 
     fun refreshDeliveryRiskState() {
@@ -267,6 +275,17 @@ fun SettingsScreen(
                     title = stringResource(R.string.label_gateway_settings),
                     subtitle = gatewaySubtitle,
                     onClick = { showGatewaySheet = true },
+                )
+            }
+            item {
+                SettingsRow(
+                    testTag = "row.settings.tasknotes",
+                    icon = Icons.Outlined.Dns,
+                    title = stringResource(R.string.tasknotes_service_title),
+                    subtitle = taskNotesSettings?.getTaskNotesServiceOrigin().orEmpty().ifBlank {
+                        stringResource(R.string.tasknotes_service_hint)
+                    },
+                    onClick = { showTaskNotesDialog = true },
                 )
             }
             if (uiState.isChannelModeLoaded) {
@@ -457,6 +476,36 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    if (showTaskNotesDialog) {
+        PushGoAlertDialog(
+            onDismissRequest = { showTaskNotesDialog = false },
+            title = { Text(stringResource(R.string.tasknotes_service_title)) },
+            text = {
+                OutlinedTextField(
+                    value = taskNotesOrigin,
+                    onValueChange = { taskNotesOrigin = it; taskNotesOriginError = false },
+                    label = { Text(stringResource(R.string.tasknotes_service_hint)) },
+                    supportingText = { Text(stringResource(if (taskNotesOriginError) R.string.tasknotes_service_invalid else R.string.tasknotes_service_description)) },
+                    isError = taskNotesOriginError,
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val normalized = TaskNotesActionPolicy.normalizeOrigin(taskNotesOrigin)
+                    if (taskNotesOrigin.isBlank() || normalized != null) {
+                        taskNotesSettings?.setTaskNotesServiceOrigin(normalized)
+                        taskNotesOrigin = normalized.orEmpty()
+                        showTaskNotesDialog = false
+                    } else taskNotesOriginError = true
+                }) { Text(stringResource(R.string.tasknotes_service_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTaskNotesDialog = false }) { Text(stringResource(R.string.tasknotes_service_cancel)) }
+            },
+        )
     }
 
     if (showGatewaySheet) {

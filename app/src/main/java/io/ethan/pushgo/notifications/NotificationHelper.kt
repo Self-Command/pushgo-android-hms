@@ -10,6 +10,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
@@ -218,6 +219,19 @@ object NotificationHelper {
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setLights(profile.lightColor, 1_500, 1_000)
             .setDeleteIntent(alertStopDeleteIntent(context, route.notificationId))
+
+        val taskNotesOrigin = (context.applicationContext as? PushGoApp)
+            ?.containerOrNull()?.settingsRepository?.getTaskNotesServiceOrigin()
+        TaskNotesActionPolicy.checkinUrl(taskNotesOrigin, message.url, message.metadata)?.let { url ->
+            val actionIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val actionPendingIntent = PendingIntent.getActivity(
+                context, route.notificationId xor 0x544e, actionIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            builder.addAction(0, context.getString(R.string.tasknotes_checkin_action), actionPendingIntent)
+        }
 
         if (postBehavior.silenceSystemAlert) {
             builder.setSilent(true)
