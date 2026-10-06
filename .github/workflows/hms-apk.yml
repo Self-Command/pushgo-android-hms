@@ -9,11 +9,41 @@ on:
         required: false
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: additive-android-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    outputs:
+      verified: ${{ steps.proof.outputs.verified }}
+    steps:
+      - id: proof
+        name: Reuse successful checks only for the identical reviewed source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo 'verified=false' >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_NAME" != main ]; then exit 0; fi
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/hms-apk.yml/runs?head_sha=$GITHUB_SHA&branch=repair%2Fhms-additive&status=completed&per_page=100" > /tmp/candidates.json
+          python3 - <<'PY'
+          import json, os, subprocess
+          for run in json.load(open('/tmp/candidates.json'))['workflow_runs']:
+              if run['head_sha'] != os.environ['GITHUB_SHA'] or run['conclusion'] != 'success': continue
+              jobs = json.loads(subprocess.check_output(['gh','api',
+                  f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run['id']}/jobs?per_page=100"]))['jobs']
+              passed = {j['name'] for j in jobs if j['conclusion'] == 'success'}
+              if not {'verify','migration'}.issubset(passed): continue
+              with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('verified=true\n')
+              with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as output:
+                  output.write('Reusing unit/lint/JNI/migration checks for the exact source SHA: '+run['html_url']+'\n')
+              break
+          PY
   verify:
+    needs: candidate
+    if: needs.candidate.outputs.verified != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -53,7 +83,8 @@ jobs:
             app/build/outputs/apk/
             app/schemas/
   migration:
-    needs: verify
+    needs: [candidate, verify]
+    if: needs.candidate.outputs.verified != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     steps:
@@ -99,8 +130,12 @@ jobs:
             app/build/outputs/androidTest-results/
             app/schemas/
   release:
-    needs: [verify, migration]
-    if: github.ref_name == 'main' || inputs.version != ''
+    needs: [candidate, verify, migration]
+    if: >-
+      always() && !cancelled() &&
+      (github.ref_name == 'main' || inputs.version != '') &&
+      ((needs.candidate.result == 'success' && needs.candidate.outputs.verified == 'true') ||
+      (needs.verify.result == 'success' && needs.migration.result == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 75
     permissions:
