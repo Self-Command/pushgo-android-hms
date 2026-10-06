@@ -98,6 +98,8 @@ class SettingsViewModel(
         private set
     var isChannelModeLoaded by mutableStateOf(false)
         private set
+    var isSwitchingPushChannel by mutableStateOf(false)
+        private set
     var privateTransportStatus by mutableStateOf("未连接")
         private set
 
@@ -466,12 +468,14 @@ class SettingsViewModel(
         updatePushChannel(context, if (enabled) PushChannelType.FCM else PushChannelType.PRIVATE)
 
     fun updatePushChannel(context: Context, target: PushChannelType) {
+        if (isSwitchingPushChannel || pushChannelType == target) return
+        isSwitchingPushChannel = true
         viewModelScope.launch {
             try {
                 settingsRepository.pushChannelMutex.withLock {
                     val previous = settingsRepository.getPushChannelType()
                     if (previous == target) return@withLock
-                    if (target == PushChannelType.HMS && !HmsSupport.isAvailable(context)) {
+                    if (target == PushChannelType.HMS && !withContext(Dispatchers.IO) { HmsSupport.isAvailable(context) }) {
                         errorMessage = ResMessage(if (HmsSupport.isConfigured()) R.string.error_hms_unavailable else R.string.error_hms_not_configured)
                         return@withLock
                     }
@@ -519,6 +523,8 @@ class SettingsViewModel(
                 } else {
                     settingsRepository.getProviderToken()?.let { token -> runCatching { channelRepository.syncProviderDeviceToken(token) } }
                 }
+            } finally {
+                isSwitchingPushChannel = false
             }
         }
     }
@@ -660,6 +666,7 @@ class SettingsViewModel(
             isFcmSupported = isFcmSupported,
             gatewayPrivateChannelEnabled = gatewayPrivateChannelEnabled,
             isChannelModeLoaded = isChannelModeLoaded,
+            isSwitchingPushChannel = isSwitchingPushChannel,
             privateTransportStatus = privateTransportStatus,
             decryptionKeyInput = decryptionKeyInput,
             keyEncoding = keyEncoding,
