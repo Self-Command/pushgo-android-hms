@@ -293,8 +293,9 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         normalizedToken: String,
         triggerPull: Boolean,
         provider: PushChannelType,
-    ) {
-        if (container.settingsRepository.getPushChannelType() != provider) return
+    ): Boolean {
+        if (container.settingsRepository.getPushChannelType() != provider) return true
+        var synchronized = true
         val useFcmChannel = runCatching { container.settingsRepository.getUseProviderChannel() }
             .getOrDefault(true)
         cachedUseFcmChannel = useFcmChannel
@@ -303,6 +304,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             runCatching {
                 container.channelRepository.syncProviderDeviceToken(normalizedToken, expectedProvider = provider)
             }.onFailure { error ->
+                synchronized = false
                 PushGoAutomation.recordRuntimeError(
                     source = "provider.sync_device_token",
                     error = error,
@@ -312,6 +314,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             runCatching {
                 container.channelRepository.syncSubscriptionsIfNeeded(normalizedToken)
             }.onFailure { error ->
+                synchronized = false
                 PushGoAutomation.recordRuntimeError(
                     source = "channel.sync.after_token_update",
                     error = error,
@@ -319,7 +322,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
                 )
             }
         }
-        if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return
+        if (container.settingsRepository.getPushChannelType() != provider || container.settingsRepository.getProviderToken(provider) != normalizedToken) return true
         if (effectiveFcmMode && triggerPull) {
             scheduleProviderIngressSync(reason = "token_update")
         }
@@ -328,6 +331,7 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
             systemToken = if (effectiveFcmMode) normalizedToken else null,
         )
         PrivateChannelServiceManager.refreshForMode(this@PushGoApp, effectiveFcmMode)
+        return synchronized
     }
 
     private suspend fun applyAutomationGatewayOverrideIfNeeded(container: AppContainer) {
@@ -405,13 +409,13 @@ class PushGoApp : Application(), SingletonImageLoader.Factory {
         appScope.launch { syncProviderToken(type, deviceToken) }
     }
 
-    suspend fun syncProviderToken(type: PushChannelType, deviceToken: String) {
-        val container = containerOrNull() ?: return
-        val normalized = deviceToken.trim().ifEmpty { return }
+    suspend fun syncProviderToken(type: PushChannelType, deviceToken: String): Boolean {
+        val container = containerOrNull() ?: return false
+        val normalized = deviceToken.trim().ifEmpty { return true }
         container.settingsRepository.setProviderToken(type, normalized)
-        if (container.settingsRepository.getPushChannelType() != type) return
-        if (type == PushChannelType.HMS && !HmsSupport.isConfigured()) return
-        processPushTokenUpdate(container, normalized, triggerPull = true, provider = type)
+        if (container.settingsRepository.getPushChannelType() != type) return true
+        if (type == PushChannelType.HMS && !HmsSupport.isConfigured()) return true
+        return processPushTokenUpdate(container, normalized, triggerPull = true, provider = type)
     }
 
     private suspend fun syncSubscriptionsOnLaunch() {
