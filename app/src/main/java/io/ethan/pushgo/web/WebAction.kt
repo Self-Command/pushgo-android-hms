@@ -35,7 +35,7 @@ data class WebOrigin(val host: String, val port: Int) {
     }
 }
 
-data class NativeTaskCard(val title: String, val content: String, val start: String?, val due: String?, val priority: String, val status: String, val tags: List<String>, val source: String, val timezone: String) {
+data class NativeTaskCard(val title: String, val content: String, val start: String?, val due: String?, val priority: String, val status: String, val tags: List<String>, val source: String, val timezone: String, val number: String = "未设置", val created: String? = null) {
     companion object {
         fun from(metadata: Map<String, String>): NativeTaskCard? = runCatching {
             if (metadata["task_card_version"] != "1") return null
@@ -45,7 +45,7 @@ data class NativeTaskCard(val title: String, val content: String, val start: Str
             fun text(key: String, fallback: String = "") = (card[key] as? String)?.take(262144) ?: fallback
             val title = text("title").trim().takeIf { it.isNotEmpty() } ?: return null
             val tags = (card["tags"] as? List<*>)?.mapNotNull { (it as? String)?.take(256) }?.take(100).orEmpty()
-            NativeTaskCard(title, text("content"), card["start"] as? String, card["due"] as? String, text("priority", "未设置"), text("status", "未设置"), tags, text("source", "任务中心"), text("timezone", "Asia/Shanghai"))
+            NativeTaskCard(title, text("content"), card["start"] as? String, card["due"] as? String, text("priority", "未设置"), text("status", "未设置"), tags, text("source", "任务中心"), text("timezone", "Asia/Shanghai"), text("number", "未设置"), card["created"] as? String)
         }.getOrNull()
     }
 }

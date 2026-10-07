@@ -46,6 +46,9 @@ fun TaskMessageCard(task: NativeTaskCard) {
                     Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) { Text(tag.removePrefix("#"), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium) }
                 } }
             }
+            TaskField("任务编号", task.number)
+            TaskField("创建时间", date(task.created))
+            TaskField("时区", if (task.timezone == "Asia/Shanghai") "北京时间" else task.timezone)
             TaskField("任务来源", task.source)
         } }
     }

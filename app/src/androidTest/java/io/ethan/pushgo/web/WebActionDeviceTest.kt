@@ -30,7 +30,9 @@ class WebActionDeviceTest {
    } catch (_: StaleObjectException) { /* system picker relayout; locate its current node */ }
   }
   val context=ApplicationProvider.getApplicationContext<Context>()
-  device.dumpWindowHierarchy(java.io.File(context.filesDir,"web-action-failure.xml"))
+  val hierarchy=java.io.File(context.filesDir,"web-action-failure.xml")
+  device.dumpWindowHierarchy(hierarchy)
+  android.util.Log.e("WebActionUiFixture",hierarchy.readText())
   device.takeScreenshot(java.io.File(context.filesDir,"web-action-failure.png"))
   throw AssertionError("UI action did not become available: $selector")
  }
@@ -54,6 +56,7 @@ class WebActionDeviceTest {
    val drawer=device.findObject(By.descContains("Show roots"))?:device.findObject(By.descContains("Navigation drawer"))
    drawer?.click()
    clickFresh(device, By.text("Images"))
+   if(device.wait(Until.hasObject(By.text("Pictures")),3000))clickFresh(device,By.text("Pictures"))
    clickFresh(device, By.text("web-action-ci.png"))
    assertTrue(device.wait(Until.hasObject(By.text("照片已选择")),15000))
    clickFresh(device, By.text("提交照片"))
