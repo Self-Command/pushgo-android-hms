@@ -110,7 +110,7 @@ class WebActionActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) { if (request.isForMainFrame) pageError = true }
         }
         webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView, value: Int) { progress = value }
+            override fun onProgressChanged(view: WebView, value: Int) { this@WebActionActivity.progress = value }
             override fun onPermissionRequest(request: PermissionRequest) { request.deny() }
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 chooser?.onReceiveValue(null); chooser = callback

@@ -109,6 +109,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: native/quinn-jni
+      - name: Prepare isolated HTTPS photo fixture
+        run: |
+          mkdir -p .ci app/src/debug/res/raw
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout .ci/web.key -out .ci/web.pem -days 1 -subj '/CN=10.0.2.2' -addext 'subjectAltName=IP:10.0.2.2,IP:127.0.0.1'
+          cp .ci/web.pem app/src/debug/res/raw/web_action_ci_ca.pem
+          python3 - <<'PY'
+          import pathlib
+          p=pathlib.Path('app/src/debug/res/xml/debug_network_security_config.xml')
+          p.write_text(p.read_text().replace('</domain-config>','<trust-anchors><certificates src="system"/><certificates src="@raw/web_action_ci_ca"/></trust-anchors></domain-config>'))
+          PY
+          python3 scripts/web-action-https-fixture.py .ci/web.pem .ci/web.key > .ci/web-fixture.log 2>&1 &
       - name: Enable KVM for isolated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -120,7 +131,11 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest
+          script: |
+            python3 -c "import base64;open('/tmp/web-action-ci.png','wb').write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xl1sAAAAASUVORK5CYII='))"
+            adb push /tmp/web-action-ci.png /sdcard/Download/web-action-ci.png
+            adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/web-action-ci.png
+            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.webActionFixtureUrl=https://10.0.2.2:18443/ -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest,io.ethan.pushgo.web.WebActionDeviceTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
