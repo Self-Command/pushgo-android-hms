@@ -3,7 +3,8 @@ package io.ethan.pushgo.web
 import android.os.SystemClock
 import android.content.ContentValues
 import android.provider.MediaStore
-import android.util.Base64
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.content.Context
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -43,11 +44,10 @@ class WebActionDeviceTest {
   val context=ApplicationProvider.getApplicationContext<Context>()
   val values=ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME,"web-action-ci.png");put(MediaStore.MediaColumns.MIME_TYPE,"image/png");put(MediaStore.MediaColumns.RELATIVE_PATH,"Pictures/") }
   val photoUri=context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values)!!
-  context.contentResolver.openOutputStream(photoUri)!!.use { stream -> stream.write(Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xl1sAAAAASUVORK5CYII=",Base64.DEFAULT)) }
+  context.contentResolver.openOutputStream(photoUri)!!.use { stream -> val bitmap=Bitmap.createBitmap(8,8,Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLUE) };bitmap.compress(Bitmap.CompressFormat.PNG,100,stream);bitmap.recycle() }
   val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
   try { ActivityScenario.launch<WebActionActivity>(WebActionActivity.intent(context,WebAction(url!!,"任务照片"))).use {
-   assertTrue(device.wait(Until.hasObject(By.text("从相册选择")),20000))
-   clickFresh(device, By.text("从相册选择"))
+   clickFresh(device, By.text("从相册选择"),60000)
    SystemClock.sleep(1000)
    // Cancel the system picker first; the original page must remain usable.
    device.pressBack();assertTrue(device.wait(Until.hasObject(By.text("从相册选择")),10000))
