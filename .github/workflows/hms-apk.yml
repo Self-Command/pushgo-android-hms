@@ -131,13 +131,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: |
-            result=0
-            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.webActionFixtureUrl=https://10.0.2.2:18443/ -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest,io.ethan.pushgo.web.WebActionDeviceTest || result=$?
-            mkdir -p app/build/reports/web-action
-            adb exec-out run-as io.ethan.pushgo cat files/web-action-failure.xml > app/build/reports/web-action/failure.xml || true
-            adb exec-out run-as io.ethan.pushgo cat files/web-action-failure.png > app/build/reports/web-action/failure.png || true
-            exit "$result"
+          script: bash scripts/run-web-action-device-tests.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -255,7 +249,8 @@ jobs:
           set -euo pipefail
           printf '%s\n' '保留官方 FCM、私有连接、Rust JNI、原页面和消息/事件/事物；HMS 是第三个可选通道。' \
             '此公开 APK 未注入个人华为配置，HMS 显示未配置。需要 HMS 可 Fork 并配置自己的 Secrets 构建。' \
-            '移除 TaskNotes 专用地址与按钮，保留普通消息链接。支持 HTTP 网关，自动更新失败只提示一次。' \
+            '新增通用 HTTPS 内置网页入口，支持系统照片选择和拍照；任务消息采用原生中文卡片，完整展示标题、正文、时间、状态、优先级、标签等字段。' \
+            '普通消息、事件、事物、四级通知和更新功能继续保留。支持 HTTP 网关，自动更新失败只提示一次。' \
             "Source SHA: $GITHUB_SHA" > .ci/notes.md
           gh release create "pushgo-$RELEASE_VERSION" dist/* --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" --title "PushGo $RELEASE_VERSION (generic)" --notes-file .ci/notes.md --latest
