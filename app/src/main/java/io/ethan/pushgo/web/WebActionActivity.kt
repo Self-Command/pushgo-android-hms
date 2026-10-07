@@ -51,7 +51,7 @@ class WebActionActivity : AppCompatActivity() {
     private var browser: WebView? = null
     private var chooser: ValueCallback<Array<Uri>>? = null
     private var cameraUri: Uri? = null
-    private var progress by mutableIntStateOf(0)
+    private var loadProgress by mutableIntStateOf(0)
     private var pageError by mutableStateOf(false)
     private lateinit var origin: WebOrigin
     private var initialUrl = ""
@@ -78,7 +78,7 @@ class WebActionActivity : AppCompatActivity() {
         })
         setContent { PushGoTheme { Scaffold(topBar = { TopAppBar(title = { Column { Text(pageLabel, style = MaterialTheme.typography.titleMedium); Text(origin.host, style = MaterialTheme.typography.bodySmall) } }, navigationIcon = { IconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "返回消息") } }) }) { insets ->
             Column(Modifier.fillMaxSize().padding(insets)) {
-                if (progress < 100) LinearProgressIndicator()
+                if (loadProgress < 100) LinearProgressIndicator()
                 if (pageError) Text("页面暂时无法打开，请返回消息后重试。", modifier = Modifier.padding(insets))
                 AndroidView(modifier = Modifier.fillMaxSize(), factory = { createBrowser(it) })
             }
@@ -110,7 +110,7 @@ class WebActionActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) { if (request.isForMainFrame) pageError = true }
         }
         webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView, value: Int) { this@WebActionActivity.progress = value }
+            override fun onProgressChanged(view: WebView, value: Int) { loadProgress = value }
             override fun onPermissionRequest(request: PermissionRequest) { request.deny() }
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 chooser?.onReceiveValue(null); chooser = callback
