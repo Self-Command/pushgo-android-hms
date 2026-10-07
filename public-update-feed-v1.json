@@ -4,11 +4,11 @@
     "distribution": "public",
     "entries": [
       {
-        "versionCode": 1030499,
-        "versionName": "v1.3.4",
-        "apkUrl": "https://github.com/Self-Command/pushgo-android-hms/releases/download/pushgo-v1.3.4/PushGo-v1.3.4.apk",
-        "apkSha256": "0b1634e5dea27a74e7063c54dbf8f7c5f5130accafa3b0728e83c9b8bb21559a",
-        "releaseNotesUrl": "https://github.com/Self-Command/pushgo-android-hms/releases/tag/pushgo-v1.3.4",
+        "versionCode": 1030599,
+        "versionName": "v1.3.5",
+        "apkUrl": "https://github.com/Self-Command/pushgo-android-hms/releases/download/pushgo-v1.3.5/PushGo-v1.3.5.apk",
+        "apkSha256": "a8140c8515152fc05d53e49767cb5f37abbafc704a67c0618d6ab77dab239834",
+        "releaseNotesUrl": "https://github.com/Self-Command/pushgo-android-hms/releases/tag/pushgo-v1.3.5",
         "browserDownload": false,
         "minSdk": 28,
         "allowedAbis": [
@@ -21,6 +21,6 @@
     ]
   },
   "signatures": {
-    "ecdsa-p256-sha256": "MEQCIEsxAFO67eoda0ioiB8GzjpY74+mpde2VBxHGnwXC0B1AiBBd9h55Fq/ggOp5mVT2a5cD9QPSe3uiEEuwMSPz34vJw=="
+    "ecdsa-p256-sha256": "MEQCIA+E/PWZyDqDu8TbEwhjKiZafshW9NBEWwYP0R1wUDZIAiAVvxn2i8suo8RaT/TUsegU0Tp8DtDEARolQI2/qr+18Q=="
   }
 }
