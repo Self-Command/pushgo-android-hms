@@ -133,6 +133,7 @@ jobs:
           disable-animations: true
           script: |
             python3 -c "import base64;open('/tmp/web-action-ci.png','wb').write(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xl1sAAAAASUVORK5CYII='))"
+            adb shell mkdir -p /sdcard/Download
             adb push /tmp/web-action-ci.png /sdcard/Download/web-action-ci.png
             adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/web-action-ci.png
             ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.webActionFixtureUrl=https://10.0.2.2:18443/ -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest,io.ethan.pushgo.web.WebActionDeviceTest
