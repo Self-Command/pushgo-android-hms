@@ -57,7 +57,11 @@ class WebActionDeviceTest {
    drawer?.click()
    clickFresh(device, By.text("Images"))
    if(device.wait(Until.hasObject(By.text("Pictures")),3000))clickFresh(device,By.text("Pictures"))
-   clickFresh(device, By.text("web-action-ci.png"))
+   // DocumentsUI grid exposes file names as a description, not visible text.
+   val image=device.wait(Until.findObject(By.descStartsWith("web-action-ci.png,")),15000)
+   assertNotNull("Generated photo is visible in the system image picker",image)
+   val bounds=image!!.visibleBounds
+   device.click(bounds.left+8,bounds.bottom-8)
    assertTrue(device.wait(Until.hasObject(By.text("照片已选择")),15000))
    clickFresh(device, By.text("提交照片"))
    assertTrue(device.wait(Until.hasObject(By.text("照片已上传")),15000))
