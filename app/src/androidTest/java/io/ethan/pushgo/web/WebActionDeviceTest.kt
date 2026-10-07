@@ -29,6 +29,9 @@ class WebActionDeviceTest {
     if (view != null) { view.click(); return }
    } catch (_: StaleObjectException) { /* system picker relayout; locate its current node */ }
   }
+  val context=ApplicationProvider.getApplicationContext<Context>()
+  device.dumpWindowHierarchy(java.io.File(context.filesDir,"web-action-failure.xml"))
+  device.takeScreenshot(java.io.File(context.filesDir,"web-action-failure.png"))
   throw AssertionError("UI action did not become available: $selector")
  }
 
@@ -36,8 +39,8 @@ class WebActionDeviceTest {
   val url=InstrumentationRegistry.getArguments().getString("webActionFixtureUrl")
   assumeTrue("Action-only isolated HTTPS fixture required",url!=null)
   val context=ApplicationProvider.getApplicationContext<Context>()
-  val values=ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME,"web-action-ci.png");put(MediaStore.MediaColumns.MIME_TYPE,"image/png");put(MediaStore.MediaColumns.RELATIVE_PATH,"Download/") }
-  val photoUri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values)!!
+  val values=ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME,"web-action-ci.png");put(MediaStore.MediaColumns.MIME_TYPE,"image/png");put(MediaStore.MediaColumns.RELATIVE_PATH,"Pictures/") }
+  val photoUri=context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values)!!
   context.contentResolver.openOutputStream(photoUri)!!.use { stream -> stream.write(Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xl1sAAAAASUVORK5CYII=",Base64.DEFAULT)) }
   val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
   try { ActivityScenario.launch<WebActionActivity>(WebActionActivity.intent(context,WebAction(url!!,"任务照片"))).use {
@@ -50,7 +53,7 @@ class WebActionDeviceTest {
    SystemClock.sleep(1000)
    val drawer=device.findObject(By.descContains("Show roots"))?:device.findObject(By.descContains("Navigation drawer"))
    drawer?.click()
-   clickFresh(device, By.text("Downloads"))
+   clickFresh(device, By.text("Images"))
    clickFresh(device, By.text("web-action-ci.png"))
    assertTrue(device.wait(Until.hasObject(By.text("照片已选择")),15000))
    clickFresh(device, By.text("提交照片"))

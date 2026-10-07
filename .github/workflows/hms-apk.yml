@@ -132,7 +132,12 @@ jobs:
           target: google_apis
           disable-animations: true
           script: |
-            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.webActionFixtureUrl=https://10.0.2.2:18443/ -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest,io.ethan.pushgo.web.WebActionDeviceTest
+            result=0
+            ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.webActionFixtureUrl=https://10.0.2.2:18443/ -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest,io.ethan.pushgo.web.WebActionDeviceTest || result=$?
+            mkdir -p app/build/reports/web-action
+            adb exec-out run-as io.ethan.pushgo cat files/web-action-failure.xml > app/build/reports/web-action/failure.xml || true
+            adb exec-out run-as io.ethan.pushgo cat files/web-action-failure.png > app/build/reports/web-action/failure.png || true
+            exit "$result"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -140,6 +145,7 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+            app/build/reports/web-action/
             app/schemas/
   release:
     needs: [candidate, verify, migration]
