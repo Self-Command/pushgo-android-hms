@@ -1,5 +1,8 @@
 package io.ethan.pushgo.notifications
 
+import io.ethan.pushgo.web.WebAction
+import io.ethan.pushgo.web.WebActionActivity
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -218,6 +221,12 @@ object NotificationHelper {
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
             .setLights(profile.lightColor, 1_500, 1_000)
             .setDeleteIntent(alertStopDeleteIntent(context, route.notificationId))
+
+        WebAction.from(message.metadata)?.let { action ->
+            val actionIntent = WebActionActivity.intent(context, action).apply { data = android.net.Uri.parse("pushgo://web-action/${message.id}") }
+            val webPendingIntent = PendingIntent.getActivity(context, route.notificationId, actionIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            builder.addAction(0, action.label, webPendingIntent)
+        }
 
         if (postBehavior.silenceSystemAlert) {
             builder.setSilent(true)

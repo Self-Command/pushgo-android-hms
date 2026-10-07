@@ -120,7 +120,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest
+          script: ./gradlew --no-daemon --max-workers=2 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.ethan.pushgo.data.db.PushGoDatabaseMigrationDeviceTest,io.ethan.pushgo.data.db.PushChannelMigrationDeviceTest,io.ethan.pushgo.ui.accessibility.TransportSelectorUiTest,io.ethan.pushgo.web.TaskMessageCardUiTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:

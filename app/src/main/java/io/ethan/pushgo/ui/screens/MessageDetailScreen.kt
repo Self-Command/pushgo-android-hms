@@ -1,5 +1,10 @@
 package io.ethan.pushgo.ui.screens
 
+import io.ethan.pushgo.web.WebAction
+import io.ethan.pushgo.web.WebActionActivity
+import io.ethan.pushgo.web.NativeTaskCard
+import io.ethan.pushgo.web.TaskMessageCard
+
 import android.content.Intent
 import android.content.Context
 import android.net.Uri
@@ -364,6 +369,10 @@ internal fun MessageDetailCoreContent(
     onOpenUrl: (String) -> Unit,
 ) {
     val uiColors = PushGoThemeExtras.colors
+    val actionContext = androidx.compose.ui.platform.LocalContext.current
+    val webAction = remember(message.rawPayloadJson) { WebAction.from(message.metadata) }
+    val taskCard = remember(message.rawPayloadJson) { NativeTaskCard.from(message.metadata) }
+    val visibleMetadata = remember(message.rawPayloadJson) { message.metadata.filterKeys { it !in WebAction.reservedKeys } }
     val detailScrollState = rememberScrollState()
     var activeAnimatedImageKey by remember(message.id) { mutableStateOf<String?>(null) }
     val reservedAspectRatio = remember(primaryImageAspectRatio) {
@@ -533,9 +542,13 @@ internal fun MessageDetailCoreContent(
             }
         }
 
-        if (message.metadata.isNotEmpty()) {
+        taskCard?.let { TaskMessageCard(it) }
+        webAction?.let { action ->
+            Button(onClick = { WebActionActivity.open(actionContext, action) }, modifier = Modifier.fillMaxWidth().height(48.dp).testTag("action.message.open_web"), shape = RoundedCornerShape(12.dp)) { Text(action.label) }
+        }
+        if (visibleMetadata.isNotEmpty()) {
             MetadataSection(
-                items = message.metadata,
+                items = visibleMetadata,
                 onCopyValue = onCopyText,
             )
         }

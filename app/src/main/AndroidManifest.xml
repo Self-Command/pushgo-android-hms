@@ -38,6 +38,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".web.WebActionActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" />
+
         <service
             android:name=".notifications.PushGoMessagingService"
             android:exported="false">

@@ -9,4 +9,5 @@
     <cache-path
         name="shared_images"
         path="shared-images/" />
+    <cache-path name="web_photos" path="web-photos/" />
 </paths>
