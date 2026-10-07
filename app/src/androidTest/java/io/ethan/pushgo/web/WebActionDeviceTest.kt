@@ -1,6 +1,9 @@
 package io.ethan.pushgo.web
 
 import android.os.SystemClock
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.util.Base64
 import android.content.Context
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -20,8 +23,11 @@ class WebActionDeviceTest {
   val url=InstrumentationRegistry.getArguments().getString("webActionFixtureUrl")
   assumeTrue("Action-only isolated HTTPS fixture required",url!=null)
   val context=ApplicationProvider.getApplicationContext<Context>()
+  val values=ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME,"web-action-ci.png");put(MediaStore.MediaColumns.MIME_TYPE,"image/png");put(MediaStore.MediaColumns.RELATIVE_PATH,"Download/") }
+  val photoUri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values)!!
+  context.contentResolver.openOutputStream(photoUri)!!.use { stream -> stream.write(Base64.decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+Xl1sAAAAASUVORK5CYII=",Base64.DEFAULT)) }
   val device=UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-  ActivityScenario.launch<WebActionActivity>(WebActionActivity.intent(context,WebAction(url!!,"任务照片"))).use {
+  try { ActivityScenario.launch<WebActionActivity>(WebActionActivity.intent(context,WebAction(url!!,"任务照片"))).use {
    assertTrue(device.wait(Until.hasObject(By.text("从相册选择")),20000))
    device.findObject(By.text("从相册选择")).click()
    SystemClock.sleep(1000)
@@ -39,6 +45,6 @@ class WebActionDeviceTest {
    assertTrue(device.wait(Until.hasObject(By.text("照片已上传")),15000))
    assertEquals("io.ethan.pushgo",device.currentPackageName)
    device.takeScreenshot(java.io.File(context.getExternalFilesDir(null),"web-action-upload.png"))
-  }
+  } } finally {context.contentResolver.delete(photoUri,null,null)}
  }
 }
